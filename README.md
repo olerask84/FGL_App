@@ -12,9 +12,9 @@ Appen kan installeres på **Android** (Chrome/Edge) og **iOS** (Safari), virker 
 
 ---
 
-## Live (GitHub Pages)
+## Live ([GitHub Pages](https://olerask84.github.io/FGL_App/))
 
-Når **GitHub Pages** er slået til (se nedenfor), ligger appen på:
+
 
 # FGL PWA (v5)
 
