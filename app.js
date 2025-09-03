@@ -29,7 +29,7 @@ const FINES = [
   // Counters
   { id: 'usportslig',      name: 'Usportslig',      type: 'count', value: 25 },
   { id: 'brok',            name: 'Brok',            type: 'count', value: 25 },
-  { id: 'forkert-scorekort', name: 'Forkert Scorekort', type: 'count', value: 25 },
+  { id: 'forkert-scorekort', name: 'Forkert Scorekort', type: 'check', value: 25 },
   { id: 'tabt-ting',       name: 'Tabt Ting',       type: 'count', value: 25 },
   { id: 'mobiltelefoni',   name: 'Mobiltelefoni',   type: 'count', value: 25 },
   { id: 'glemt-ting',      name: 'Glemt Ting',      type: 'count', value: 25 },
@@ -94,22 +94,22 @@ const confirmYes = document.getElementById('confirmYes');
 const confirmNo = document.getElementById('confirmNo');
 
 // (valgfri) Installér-knap til Android/Chromium
-const installBtn = document.getElementById('installBtn');
-let deferredInstallEvent = null;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredInstallEvent = e;
-  installBtn.style.display = 'inline-block';
-});
-installBtn.addEventListener('click', async () => {
-  if (!deferredInstallEvent) return;
-  await deferredInstallEvent.prompt();
-  deferredInstallEvent = null;
-  installBtn.style.display = 'none';
-});
-window.addEventListener('appinstalled', () => {
-  deferredInstallEvent = null; installBtn.style.display = 'none';
-});
+//const installBtn = document.getElementById('installBtn');
+//let deferredInstallEvent = null;
+//window.addEventListener('beforeinstallprompt', (e) => {
+//  e.preventDefault();
+//  deferredInstallEvent = e;
+//  installBtn.style.display = 'inline-block';
+//});
+//installBtn.addEventListener('click', async () => {
+//  if (!deferredInstallEvent) return;
+//  await deferredInstallEvent.prompt();
+//  deferredInstallEvent = null;
+//  installBtn.style.display = 'none';
+//});
+//window.addEventListener('appinstalled', () => {
+//  deferredInstallEvent = null; installBtn.style.display = 'none';
+//});
 
 /** Utils **/
 function uid() { return 'p-' + Math.random().toString(36).slice(2, 9); }

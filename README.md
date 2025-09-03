@@ -8,7 +8,7 @@ Appen kan installeres på **Android** (Chrome/Edge) og **iOS** (Safari), virker 
 > - Brug `+ / −` på tælle-bøder og **checkbox** på engangsbøder.
 > - Alle beløb beregnes automatisk, inkl. **At betale** (sum).
 > - **Bøder**-fanen (i højre side) lader dig **redigere bødeværdier** globalt.
-> - **Reset** nulstiller **kun spillere** – **bødeværdier bevares** (v6).
+> - **Reset** nulstiller **kun spillere** – **bødeværdier bevares** (v7).
 
 ---
 
@@ -16,7 +16,7 @@ Appen kan installeres på **Android** (Chrome/Edge) og **iOS** (Safari), virker 
 
 
 
-# FGL PWA (v6)
+# FGL PWA (v7)
 
 **Ændring:** `Reset` nulstiller **kun spillere** – **bødeværdier bevares**, indtil de ændres manuelt under fanen **Bøder**.
 

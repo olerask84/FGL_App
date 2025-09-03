@@ -7,7 +7,7 @@ body::before{content:"";position:fixed;inset:0;background-image:url('assets/icon
 #app{position:relative;z-index:1}
 
 /* Topbar */
-.topbar{display:grid;grid-template-columns:1fr auto auto auto;gap:.5rem;padding:.75rem;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
+.topbar{display:grid;grid-template-columns:1fr auto auto;gap:.5rem;padding:.75rem;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
 .topbar input[type=text]{padding:.6rem .75rem;border:1px solid var(--border);border-radius:.4rem;background:#fff}
 .btn{appearance:none;border:1px solid var(--border);background:#fff;color:var(--ink);padding:.55rem .9rem;border-radius:.5rem;cursor:pointer;font-weight:600}
 .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
