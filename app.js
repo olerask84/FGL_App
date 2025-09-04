@@ -22,7 +22,7 @@ const FINES = [
   // Checkboxes
   { id: 'roed-tee',        name: 'Rød Tee',         type: 'check', value: 50 },
   { id: 'under-25-point',  name: 'Under 25 point',  type: 'check', value: 25 },
-  { id: 'dameoel',         name: 'Dameøl',          type: 'check', value: 50 },
+  { id: 'dameoel',         name: 'Dameøl',          type: 'count', value: 50 },
   { id: 'buggy',           name: 'Buggy',           type: 'check', value: 100 },
   { id: 'dresscode',       name: 'Dresscode',       type: 'check', value: 50 },
 
