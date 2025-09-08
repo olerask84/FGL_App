@@ -14,15 +14,14 @@
 <body>
   <div id="app">
     <header class="topbar">
-      <input id="playerName" type="text" placeholder="Indtast spillerens navn" aria-label="Spillernavn" />
       <button id="addPlayerBtn" class="btn primary" aria-label="Tilføj spiller">Tilføj spiller</button>
       <button id="resetBtn" class="btn danger hidden" aria-label="Nulstil app">Reset</button>
     </header>
-
     <nav id="tabs" class="tabs" aria-label="Spillere og bøder (faner)"></nav>
     <main id="tabPanels" class="tab-panels"></main>
   </div>
 
+  <!-- Nulstil-dialog -->
   <div id="confirmOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
     <div class="dialog" role="document">
       <h3 id="confirmTitle">Nulstil app?</h3>
@@ -34,9 +33,23 @@
     </div>
   </div>
 
+  <!-- Spiller-vælger -->
+  <div id="pickerOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+    <div class="dialog" role="document">
+      <h3 id="pickerTitle">Vælg spillere</h3>
+      <input id="pickerSearch" type="text" placeholder="Søg efter navn..." aria-label="Søg i spillere" />
+      <div id="pickerList" class="picker-list" role="listbox" aria-label="Spillerliste"></div>
+      <div class="actions">
+        <button id="pickerConfirm" class="btn primary" disabled>OK</button>
+        <button id="pickerClose" class="btn">Annuller</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
   <script>
-    if ('serviceWorker' in navigator) {
+    // Registrér SW kun over http(s), så lokal åbning (file://) ikke fejler
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js'));
     }
   </script>

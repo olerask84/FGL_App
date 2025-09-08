@@ -1,23 +1,21 @@
-# Funder Golf League (FGL) – Progressive Web App
+# FGL PWA
 
-En simpel PWA til at registrere og beregne bøder pr. spiller i Funder Golf League.  
-Appen kan installeres på **Android** (Chrome/Edge) og **iOS** (Safari), virker offline og gemmer data lokalt i browseren.
+PWA til Funder Golf League med spiller-vælger fra Google Sheet og forebyggelse af dubletter.
 
-> **Kort fortalt**
-> - Tilføj op til **4 spillere** – hver får sin egen fane.
-> - Brug `+ / −` på tælle-bøder og **checkbox** på engangsbøder.
-> - Alle beløb beregnes automatisk, inkl. **At betale** (sum).
-> - **Bøder**-fanen (i højre side) lader dig **redigere bødeværdier** globalt.
-> - **Reset** nulstiller **kun spillere** – **bødeværdier bevares** (v7).
+## Sådan kører du lokalt
 
----
+1. Pak zip-filen ud i en mappe og servér mappen via en lille HTTP-server (PWA kræver http/https).
+   - Hurtigt (Python):
+     ```bash
+     python3 -m http.server 8080
+     ```
+     Åbn derefter http://localhost:8080
 
-## Live ([GitHub Pages](https://olerask84.github.io/FGL_App/))
+2. Dit Google Sheet skal være **delt** (Alle med link kan se) eller **Udgivet på webben**.
+   - `SHEET_ID` er sat i `app.js`.
+   - `SHEET_NAME` er sat til `Spiller`.
+   - Kolonnerne skal hedde **"Navn"** og **"Fane Navn"**.
 
-
-
-# FGL PWA (v7)
-
-**Ændring:** `Reset` nulstiller **kun spillere** – **bødeværdier bevares**, indtil de ændres manuelt under fanen **Bøder**.
-
-Øvrigt: Fanepanel med stort vandmærke, global Bøder-fane, cache bump til v6 for sikker opdatering.
+3. Klik **Tilføj spiller** for at åbne vælgeren. Vælg en spiller.
+   - Fanens navn = **Fane Navn** (eller **Navn**, hvis "Fane Navn" er tom).
+   - Dubletter blokeres.
