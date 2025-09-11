@@ -2,6 +2,7 @@
 const STORAGE_KEY = 'fgl.players.v1';
 const FINES_VALUES_KEY = 'fgl.finevalues.v1';
 const MAX_PLAYERS = 4;
+const MIN_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 timer
 
 // Google Sheet-konfiguration
 const SHEET_ID = '113sdXTQcfODil1asdol1DCWZPcMKHQb5QTA1lj8Qn5A';
@@ -37,6 +38,41 @@ const FINES = [
 
 const DEFAULT_FINE_VALUES = Object.fromEntries(FINES.map(f => [f.id, f.value]));
 const FINE_MAP = Object.fromEntries(FINES.map(f => [f.id, f]));
+
+// --- [NEW] Offline-cache til spillerlisten ---
+const SHEET_CACHE_KEY = 'fgl.sheet.players.v1';
+const SHEET_CACHE_META_KEY = 'fgl.sheet.players.meta.v1';
+
+function loadSheetCache() {
+  try {
+    const list = JSON.parse(localStorage.getItem(SHEET_CACHE_KEY) || '[]');
+    const meta = JSON.parse(localStorage.getItem(SHEET_CACHE_META_KEY) || '{}');
+    return { list, meta };
+  } catch {
+    return { list: [], meta: {} };
+  }
+}
+function saveSheetCache(list, meta = {}) {
+  localStorage.setItem(SHEET_CACHE_KEY, JSON.stringify(list));
+  localStorage.setItem(SHEET_CACHE_META_KEY, JSON.stringify(meta));
+}
+// Simpel FNV-1a hash af en streng
+function hashString(str) {
+  let h = 0x811c9dc5 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+}
+// Normaliser liste og lav stabil hash (uafhængig af rækkefølge/spaces)
+function calcListHash(list) {
+  const norm = list
+    .map(p => ({ navn: (p.navn||'').trim(), faneNavn: (p.faneNavn||'').trim() }))
+    .sort((a,b) => (a.faneNavn + a.navn).localeCompare(b.faneNavn + b.navn));
+  return hashString(JSON.stringify(norm));
+}
+
 
 function loadPlayers() {
   try {
@@ -90,7 +126,7 @@ const overlay = document.getElementById('confirmOverlay');
 const confirmYes = document.getElementById('confirmYes');
 const confirmNo = document.getElementById('confirmNo');
 const pickerOverlay = document.getElementById('pickerOverlay');
-const pickerSearch = document.getElementById('pickerSearch');
+//const pickerSearch = document.getElementById('pickerSearch');
 const pickerList = document.getElementById('pickerList');
 const pickerClose = document.getElementById('pickerClose');
 const pickerConfirm = document.getElementById('pickerConfirm');
@@ -107,7 +143,7 @@ function createEmptyRows() {
 }
 function normalizeKey(s){ return (s||'').toString().trim().toLowerCase(); }
 
-async function fetchSheetPlayers() {
+/* async function fetchSheetPlayers() {
   sheetLoadError = null;
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
   const where = SHEET_GID ? `${base}&gid=${encodeURIComponent(SHEET_GID)}` : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
@@ -158,7 +194,90 @@ async function fetchSheetPlayers() {
   }
   sheetPlayers = result;
   sheetLoaded = true;
+} */
+
+  // --- [CHANGE] Tidligere fetchSheetPlayers => nu netværks-funktion ---
+async function fetchSheetPlayersFromNetwork() {
+  sheetLoadError = null;
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+  const where = SHEET_GID ? `${base}&gid=${encodeURIComponent(SHEET_GID)}` :
+                             `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  const url = `${where}&range=A:B&headers=1`;
+
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
+  const text = await resp.text();
+  const match = text.match(/setResponse\((.*)\)\s*;?\s*$/);
+  if (!match) throw new Error('Kunne ikke parse gviz-svar');
+  const json = JSON.parse(match[1]);
+  if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
+
+  const cols = (json.table.cols ?? []).map(c => (c.label ?? '').trim().replace(/:$/, '').toLowerCase());
+  let idxNavn = cols.indexOf('navn');
+  let idxFane = cols.indexOf('fane navn');
+  const rows = json.table.rows ?? [];
+
+  if (idxNavn === -1 || idxFane === -1) {
+    let headerRow = null;
+    for (const r of rows) {
+      const a = (r.c?.[0]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
+      const b = (r.c?.[1]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
+      if (a && b) { headerRow = r; break; }
+    }
+    if (headerRow) {
+      const a = (headerRow.c?.[0]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
+      const b = (headerRow.c?.[1]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
+      if (a === 'navn') idxNavn = 0;
+      if (b === 'fane navn') idxFane = 1;
+    }
+  }
+  if (idxNavn === -1) throw new Error('Kolonnen "Navn" blev ikke fundet.');
+  const result = [];
+  let started = false;
+  for (const r of rows) {
+    if (!started) {
+      const a = (r.c?.[0]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
+      const b = (r.c?.[1]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
+      if (a === 'navn' && b === 'fane navn') { started = true; continue; }
+    }
+    const c = r.c ?? [];
+    const navn = (c[idxNavn]?.v ?? '').toString().trim();
+    const fane = (idxFane >= 0 ? (c[idxFane]?.v ?? '') : '').toString().trim();
+    if (navn) result.push({ navn, faneNavn: fane || navn });
+  }
+  return result;
 }
+
+// Min. interval for opdatering (kan overskrives ved kald)
+async function refreshSheetPlayersIfOnline(minAgeMs = 0) {
+  const { meta } = loadSheetCache();
+
+  // 1) Spring netkald over hvis vi har opdateret for nylig
+  if (minAgeMs && meta?.updatedAt && (Date.now() - meta.updatedAt) < minAgeMs) {
+    return { changed: false, reason: 'fresh-enough' };
+  }
+
+  // 2) Ingen net => ingen opdatering
+  if (!navigator.onLine) return { changed: false, reason: 'offline' };
+
+  // 3) Prøv at hente – gem kun hvis der er ændringer
+  try {
+    const fresh = await fetchSheetPlayersFromNetwork();
+    const newHash = calcListHash(fresh);
+    if (newHash !== meta?.hash) {
+      saveSheetCache(fresh, { hash: newHash, updatedAt: Date.now() });
+      sheetPlayers = fresh;
+      sheetLoaded = true;
+      return { changed: true };
+    }
+    return { changed: false, reason: 'no-change' };
+  } catch (err) {
+    sheetLoadError = err;
+    return { changed: false, reason: 'error', error: err };
+  }
+}
+
+
 
 function hasDuplicate(displayName, meta){
   const key = normalizeKey(displayName);
@@ -377,7 +496,7 @@ function updateAmounts(table, player) {
   if (totalInput) totalInput.value = total.toString();
 }
 
-function openPicker() {
+/* function openPicker() {
   document.body.classList.add('modal-open');
   pickerOverlay.classList.remove('hidden');
   pickerSelected = new Set();
@@ -394,11 +513,40 @@ function openPicker() {
   } else {
     renderPickerList();
   }
+} */
+
+  function openPicker() {
+  document.body.classList.add('modal-open');
+  pickerOverlay.classList.remove('hidden');
+  pickerSelected = new Set();
+  updatePickerConfirm();
+
+  // 1) Vis cache straks, hvis vi har en
+  const cached = loadSheetCache();
+  if (cached.list && cached.list.length) {
+    sheetPlayers = cached.list;
+    sheetLoaded = true;
+    renderPickerList(false);
+  } else {
+    // Vis "Indlæser..." hvis vi intet cache har
+    renderPickerList(true);
+  }
+
+  // 2) Forsøg baggrundsopdatering (kun hvis online). Re-render hvis ændret
+  
+  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(({ changed }) => {
+    renderPickerList(false);
+  }).catch(() => {
+    renderPickerList(false);
+  });
+
 }
+
+
 function closePicker() {
   pickerOverlay.classList.add('hidden');
   document.body.classList.remove('modal-open');
-  pickerSearch.value = '';
+  //pickerSearch.value = '';
   pickerSelected = new Set();
 }
 
@@ -420,12 +568,31 @@ function renderPickerList(isLoading = false) {
     pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Kunne ikke hente fra arket: ${sheetLoadError.message}</span></div>`;
     return;
   }
-  const q = pickerSearch.value.trim().toLowerCase();
-  const items = sheetPlayers.filter(p => p.navn.toLowerCase().includes(q) || p.faneNavn.toLowerCase().includes(q));
-  if (items.length === 0) {
-    pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Ingen matches</span></div>`;
-    return;
-  }
+
+  
+const { meta } = loadSheetCache();
+if (meta.updatedAt) {
+  const info = document.createElement('div');
+  info.className = 'picker-item';
+  info.style.opacity = '0.7';
+  const ts = new Date(meta.updatedAt).toLocaleString('da-DK');
+  info.innerHTML = `<span class="primary-label">Sidst opdateret: ${ts}</span>`;
+  pickerList.appendChild(info);
+}
+
+  //const q = pickerSearch.value.trim().toLowerCase();
+  //const items = sheetPlayers.filter(p => p.navn.toLowerCase().includes(q) || p.faneNavn.toLowerCase().includes(q));
+  const items = sheetPlayers; // Vis alle spillere uden søgning
+
+if (items.length === 0) {
+  const hasCache = (loadSheetCache().list ?? []).length > 0;
+  const msg = !hasCache && !navigator.onLine
+    ? 'Ingen cache tilgængelig – gå online første gang for at hente spillerlisten.'
+    : 'Ingen matches';
+  pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">${msg}</span></div>`;
+  return;
+}
+
   const existingKeys = new Set([
     ...players.map(p => (p.name || '').toLowerCase()),
     ...players.map(p => ((p.meta?.navn) || '').toLowerCase())
@@ -480,14 +647,15 @@ pickerClose.addEventListener('click', closePicker);
 pickerOverlay.addEventListener('click', (e) => {
   if (e.target === pickerOverlay) closePicker();
 });
-pickerSearch.addEventListener('input', () => renderPickerList());
+//pickerSearch.addEventListener('input', () => renderPickerList());
 
 pickerConfirm.addEventListener('click', () => {
   const selectedKeys = Array.from(pickerSelected);
   if (selectedKeys.length === 0) return;
   // tilføj i den rækkefølge de vises i den aktuelle filtrerede liste
-  const q = pickerSearch.value.trim().toLowerCase();
-  const items = sheetPlayers.filter(p => p.navn.toLowerCase().includes(q) || p.faneNavn.toLowerCase().includes(q));
+  //const q = pickerSearch.value.trim().toLowerCase();
+  //const items = sheetPlayers.filter(p => p.navn.toLowerCase().includes(q) || p.faneNavn.toLowerCase().includes(q));
+  const items = sheetPlayers; // ingen søgning – brug hele listen som vist
   let slots = remainingSlots();
   for (const it of items) {
     const key = `${it.faneNavn}||${it.navn}`;
@@ -512,3 +680,12 @@ confirmYes.addEventListener('click', () => {
 
 if (players.length > 0) { activePlayerId = players[0].id; }
 render();
+
+
+window.addEventListener('online', () => {
+  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(({ changed }) => {
+    if (changed) renderPickerList(false);
+  });
+});
+
+

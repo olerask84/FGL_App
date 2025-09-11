@@ -1,5 +1,5 @@
 //.................................. service-worker.js ......................................
-const CACHE_NAME = 'fgl-cache-v11';
+const CACHE_NAME = 'fgl-cache-v12';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.json',
   './assets/icons/FGL_192.png', './assets/icons/FGL_512.png', './assets/icons/FGL_192_VM.png'
@@ -20,7 +20,11 @@ self.addEventListener('fetch', e => {
     caches.match(req).then(cached => {
       if (cached) return cached;
       return fetch(req).then(resp => {
-        if (req.method === 'GET' && resp.status === 200 && resp.type === 'basic') {
+        //if (req.method === 'GET' && resp.status === 200 && resp.type === 'basic') {
+        // Cache både same-origin (basic) og CORS-svar fra Google Sheets
+        const isGViz = req.url.includes('/gviz/tq');
+        if (req.method === 'GET' && resp.status === 200 && (resp.type === 'basic' || (resp.type === 'cors' && isGViz))) {
+
           const clone = resp.clone();
           caches.open(CACHE_NAME).then(c => c.put(req, clone));
         }

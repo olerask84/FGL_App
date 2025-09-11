@@ -1,7 +1,8 @@
 * { box-sizing: border-box; }
 :root { --bg:#f3f6f9; --card:#fff; --ink:#0b1f2a; --muted:#6b7c86; --brand:#0a3d62; --danger:#b00020; --border:#d9e1e8; }
 html,body{height:100%}
-body{margin:0;font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+/* body{margin:0;font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+ */
 body::before{content:"";position:fixed;inset:0;background-image:url('assets/icons/FGL_192_VM.png');background-repeat:repeat;background-size:128px 128px;opacity:.08;pointer-events:none;z-index:0}
 #app{position:relative;z-index:1}
 .topbar{display:grid;grid-template-columns:auto auto;gap:.5rem;padding:.75rem;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
