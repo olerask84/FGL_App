@@ -189,6 +189,7 @@ function removeAllPlayers() { players = []; activePlayerId = null; activeView = 
 
 function render() {
   resetBtn.classList.toggle('hidden', players.length === 0);
+  document.body.classList.toggle('empty-state', players.length === 0);
   renderTabs();
   renderPanels();
 }
@@ -212,8 +213,14 @@ function renderTabs() {
   }
 }
 
+
 function renderPanels() {
   panelsEl.innerHTML = '';
+
+  // Valgfrit: spring helt over når tom tilstand
+  //if (players.length === 0 && activeView !== 'fines') return;
+  if (players.length === 0) return; // enklere og sikkert
+
   const panel = document.createElement('section');
   panel.className = 'panel';
   if (activeView === 'fines') {
@@ -224,6 +231,7 @@ function renderPanels() {
   }
   panelsEl.appendChild(panel);
 }
+
 
 function buildFinesEditor() {
   const table = document.createElement('table');

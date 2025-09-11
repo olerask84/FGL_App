@@ -1,5 +1,5 @@
 //.................................. service-worker.js ......................................
-const CACHE_NAME = 'fgl-cache-v10';
+const CACHE_NAME = 'fgl-cache-v11';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.json',
   './assets/icons/FGL_192.png', './assets/icons/FGL_512.png', './assets/icons/FGL_192_VM.png'

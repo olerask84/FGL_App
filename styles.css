@@ -45,3 +45,37 @@ body.modal-open{overflow:hidden}
 .picker-item.disabled{opacity:.6;cursor:not-allowed}
 /* Checkbox-størrelse */
 .selbox{width:1.15rem;height:1.15rem}
+
+/* ===== Tom tilstand: centrer "Tilføj spiller" ===== */
+body.empty-state .topbar {
+  background: transparent;
+  border-bottom: 0;
+}
+
+/* Skjul alt andet UI i tom tilstand */
+body.empty-state .tabs,
+body.empty-state .tab-panels,
+body.empty-state #resetBtn {
+  display: none !important;
+}
+
+/* Centrer selve knappen */
+body.empty-state #addPlayerBtn {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -55%); /* en anelse højere end helt center */
+  z-index: 3;                        /* over panel, under modal (overlay har 1000) */
+  padding: 1rem 1.2rem;
+  font-size: 1.125rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .20);
+  border-radius: .6rem;
+}
+
+/* Små forbedringer til trykbarhed på mobil */
+@media (hover: none) {
+  body.empty-state #addPlayerBtn {
+    padding: 1.1rem 1.3rem;
+  }
+}
+
