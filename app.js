@@ -1,52 +1,82 @@
-//.................................. app.js (multi-select picker) ......................................
+//.................................. app.js (REPLACE) ......................................
 const STORAGE_KEY = 'fgl.players.v1';
-const FINES_VALUES_KEY = 'fgl.finevalues.v1';
 const MAX_PLAYERS = 4;
 const MIN_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 timer
 
 // Google Sheet-konfiguration
 const SHEET_ID = '113sdXTQcfODil1asdol1DCWZPcMKHQb5QTA1lj8Qn5A';
-const SHEET_NAME = 'Spiller'; // fanen med kolonnerne "Navn" og "Fane Navn"
-const SHEET_GID = '';
+const SHEET_NAME = 'Spiller'; // samme ark som spillere
+const SHEET_GID = '';         // valgfrit
 
-const FINES = [
-  { id: '3-putt', name: '3-putt', type: 'count', value: 10 },
-  { id: 'streg', name: 'Streg', type: 'count', value: 10 },
-  { id: 'mistet-bold', name: 'Mistet Bold', type: 'count', value: 5 },
-  { id: 'misset-green', name: 'Misset Green', type: 'count', value: 5 },
-  { id: 'alle-green-misset', name: 'Alle Green Misset', type: 'derived-check', source: 'misset-green' },
-  { id: 'put-i-posen', name: 'Put i Posen', type: 'count', value: 10 },
-  { id: 'bunker-x2', name: 'Bunker x2', type: 'count', value: 5 },
-  { id: 'chip-in', name: 'Chip In', type: 'count', value: 10 },
-  { id: 'luftslag', name: 'Luftslag', type: 'count', value: 25 },
-  { id: 'birdie', name: 'Birdie', type: 'count', value: 10 },
-  { id: 'eagle', name: 'Eagle', type: 'count', value: 100 },
-  { id: 'hole-in-one', name: 'Hole in One', type: 'count', value: 200 },
-  { id: 'roed-tee', name: 'Rød Tee', type: 'check', value: 50 },
-  { id: 'under-25-point', name: 'Under 25 point', type: 'check', value: 25 },
-  { id: 'dameoel', name: 'Dameøl', type: 'count', value: 50 },
-  { id: 'buggy', name: 'Buggy', type: 'check', value: 100 },
-  { id: 'dresscode', name: 'Dresscode', type: 'check', value: 50 },
-  { id: 'usportslig', name: 'Usportslig', type: 'count', value: 25 },
-  { id: 'brok', name: 'Brok', type: 'count', value: 25 },
-  { id: 'forkert-scorekort', name: 'Forkert Scorekort', type: 'check', value: 25 },
-  { id: 'tabt-ting', name: 'Tabt Ting', type: 'count', value: 25 },
-  { id: 'mobiltelefoni', name: 'Mobiltelefoni', type: 'count', value: 25 },
-  { id: 'glemt-ting', name: 'Glemt Ting', type: 'count', value: 25 },
-  { id: 'kommer-for-sent', name: 'Komme for sent', type: 'count', value: 5 },
-];
-
-const DEFAULT_FINE_VALUES = Object.fromEntries(FINES.map(f => [f.id, f.value]));
-const FINE_MAP = Object.fromEntries(FINES.map(f => [f.id, f]));
-
-// --- [NEW] Offline-cache til spillerlisten ---
+// --- [NYT] Offline-cache til spillerlisten (uændret) ---
 const SHEET_CACHE_KEY = 'fgl.sheet.players.v1';
 const SHEET_CACHE_META_KEY = 'fgl.sheet.players.meta.v1';
 
+// --- [NYT] Offline-cache til bødelisten (fra Google Sheet) ---
+const FINES_CACHE_KEY = 'fgl.sheet.fines.v1';
+const FINES_CACHE_META_KEY = 'fgl.sheet.fines.meta.v1';
+
+// --- [NYT] Dynamiske bøder; ikke længere hårdkodet ---
+let FINES = [];     // [{id, name, type, value, [source]}] fra arket
+let FINE_MAP = {};  // id -> fine
+function rebuildFineMap() { FINE_MAP = Object.fromEntries(FINES.map(f => [f.id, f])); }
+
+// UI / app-state
+let players = loadPlayers();
+let activePlayerId = players[0]?.id ?? null;
+
+// Elementer
+const tabsEl = document.getElementById('tabs');
+const panelsEl = document.getElementById('tabPanels');
+const addBtn = document.getElementById('addPlayerBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+const overlay = document.getElementById('confirmOverlay');
+const confirmYes = document.getElementById('confirmYes');
+const confirmNo = document.getElementById('confirmNo');
+
+const pickerOverlay = document.getElementById('pickerOverlay');
+//const pickerSearch = document.getElementById('pickerSearch');
+const pickerList = document.getElementById('pickerList');
+const pickerClose = document.getElementById('pickerClose');
+const pickerConfirm = document.getElementById('pickerConfirm');
+
+let pickerSelected = new Set(); // keys: `${faneNavn}\n${navn}`
+let sheetPlayers = [];          // [{navn, faneNavn}]
+let sheetLoaded = false;
+let sheetLoadError = null;
+
+// -------------------------- Utils --------------------------
+function uid() { return 'p-' + Math.random().toString(36).slice(2, 9); }
+function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+function normalizeKey(s){ return (s ?? '').toString().trim().toLowerCase(); }
+
+// Slugify med danske tegn (æ/ø/å) -> ae/oe/aa
+function slugify(s) {
+  return (s ?? '')
+    .toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[æÆ]/g, 'ae').replace(/[øØ]/g, 'oe').replace(/[åÅ]/g, 'aa')
+    .trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// FNV-1a hash (stabil)
+function hashString(str) {
+  let h = 0x811c9dc5 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+}
+
+// ------------------ Players: cache & fetch (uændret) ------------------
 function loadSheetCache() {
   try {
-    const list = JSON.parse(localStorage.getItem(SHEET_CACHE_KEY) || '[]');
-    const meta = JSON.parse(localStorage.getItem(SHEET_CACHE_META_KEY) || '{}');
+    const list = JSON.parse(localStorage.getItem(SHEET_CACHE_KEY) ?? '[]');
+    const meta = JSON.parse(localStorage.getItem(SHEET_CACHE_META_KEY) ?? '{}');
     return { list, meta };
   } catch {
     return { list: [], meta: {} };
@@ -56,154 +86,20 @@ function saveSheetCache(list, meta = {}) {
   localStorage.setItem(SHEET_CACHE_KEY, JSON.stringify(list));
   localStorage.setItem(SHEET_CACHE_META_KEY, JSON.stringify(meta));
 }
-// Simpel FNV-1a hash af en streng
-function hashString(str) {
-  let h = 0x811c9dc5 >>> 0;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16);
-}
 // Normaliser liste og lav stabil hash (uafhængig af rækkefølge/spaces)
 function calcListHash(list) {
   const norm = list
-    .map(p => ({ navn: (p.navn||'').trim(), faneNavn: (p.faneNavn||'').trim() }))
+    .map(p => ({ navn: (p.navn ?? '').trim(), faneNavn: (p.faneNavn ?? '').trim() }))
     .sort((a,b) => (a.faneNavn + a.navn).localeCompare(b.faneNavn + b.navn));
   return hashString(JSON.stringify(norm));
 }
 
-
-function loadPlayers() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    let migrated = false;
-    parsed.forEach(p => {
-      if (!p.rows) return;
-      const brokSum = (p.rows['brok'] ?? 0) + (p.rows['brok-1'] ?? 0) + (p.rows['brok-2'] ?? 0);
-      if (brokSum !== (p.rows['brok'] ?? 0)) { p.rows['brok'] = brokSum; migrated = true; }
-      delete p.rows['brok-1']; delete p.rows['brok-2'];
-      const fsSum = (p.rows['forkert-scorekort'] ?? 0) + (p.rows['forkert-scorekort-1'] ?? 0) + (p.rows['forkert-scorekort-2'] ?? 0);
-      if (fsSum !== (p.rows['forkert-scorekort'] ?? 0)) { p.rows['forkert-scorekort'] = fsSum; migrated = true; }
-      delete p.rows['forkert-scorekort-1']; delete p.rows['forkert-scorekort-2'];
-      FINES.forEach(f => { if (p.rows[f.id] === undefined) p.rows[f.id] = (f.type==='count'?0:false); });
-    });
-    if (migrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-    return parsed;
-  } catch { return []; }
-}
-function savePlayers(players) { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
-
-function loadFineValues() {
-  try {
-    const raw = localStorage.getItem(FINES_VALUES_KEY);
-    if (!raw) return { ...DEFAULT_FINE_VALUES };
-    const obj = JSON.parse(raw);
-    for (const id in DEFAULT_FINE_VALUES) {
-      if (obj[id] == null) obj[id] = DEFAULT_FINE_VALUES[id];
-    }
-    return obj;
-  } catch { return { ...DEFAULT_FINE_VALUES }; }
-}
-function saveFineValues(values) { localStorage.setItem(FINES_VALUES_KEY, JSON.stringify(values)); }
-
-let players = loadPlayers();
-let fineValues = loadFineValues();
-let activePlayerId = players[0]?.id ?? null;
-let activeView = 'player';
-let sheetPlayers = []; // [{navn, faneNavn}]
-let sheetLoaded = false;
-let sheetLoadError = null;
-
-const tabsEl = document.getElementById('tabs');
-const panelsEl = document.getElementById('tabPanels');
-const addBtn = document.getElementById('addPlayerBtn');
-const resetBtn = document.getElementById('resetBtn');
-const overlay = document.getElementById('confirmOverlay');
-const confirmYes = document.getElementById('confirmYes');
-const confirmNo = document.getElementById('confirmNo');
-const pickerOverlay = document.getElementById('pickerOverlay');
-//const pickerSearch = document.getElementById('pickerSearch');
-const pickerList = document.getElementById('pickerList');
-const pickerClose = document.getElementById('pickerClose');
-const pickerConfirm = document.getElementById('pickerConfirm');
-
-let pickerSelected = new Set(); // keys: `${faneNavn}||${navn}`
-
-function uid() { return 'p-' + Math.random().toString(36).slice(2, 9); }
-function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
-function getFineValue(id) { return Number(fineValues[id] ?? DEFAULT_FINE_VALUES[id] ?? 0); }
-function createEmptyRows() {
-  const rows = {};
-  for (const fine of FINES) rows[fine.id] = fine.type === 'count' ? 0 : false;
-  return rows;
-}
-function normalizeKey(s){ return (s||'').toString().trim().toLowerCase(); }
-
-/* async function fetchSheetPlayers() {
-  sheetLoadError = null;
-  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
-  const where = SHEET_GID ? `${base}&gid=${encodeURIComponent(SHEET_GID)}` : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
-  // vigtig: headers=1
-  const url = `${where}&range=A:B&headers=1`;
-  const resp = await fetch(url, { cache: 'no-store' });
-  if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
-  const text = await resp.text();
-  const match = text.match(/setResponse\((.*)\)\s*;?\s*$/);
-  if (!match) throw new Error('Kunne ikke parse gviz-svar');
-  const json = JSON.parse(match[1]);
-  if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
-  // 1) forsøg via kolonne-labels
-  const cols = (json.table.cols || []).map(c => (c.label||'').trim().replace(/:$/, '').toLowerCase());
-  let idxNavn = cols.indexOf('navn');
-  let idxFane = cols.indexOf('fane navn');
-  const rows = json.table.rows || [];
-  // 2) fallback: brug første ikke-tomme række som header hvis labels mangler
-  if (idxNavn === -1 || idxFane === -1) {
-    let headerRow = null;
-    for (const r of rows) {
-      const a = (r.c?.[0]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
-      const b = (r.c?.[1]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
-      if (a && b) { headerRow = r; break; }
-    }
-    if (headerRow) {
-      const a = (headerRow.c?.[0]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
-      const b = (headerRow.c?.[1]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
-      if (a === 'navn') idxNavn = 0;
-      if (b === 'fane navn') idxFane = 1;
-    }
-  }
-  if (idxNavn === -1) throw new Error('Kolonnen "Navn" blev ikke fundet.');
-  // "Fane Navn" er valgfri – vi falder tilbage til Navn
-  const result = [];
-  let started = false;
-  for (const r of rows) {
-    // spring header-rækken over (hvis vi brugte fallback)
-    if (!started) {
-      const a = (r.c?.[0]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
-      const b = (r.c?.[1]?.v ?? '').toString().trim().toLowerCase().replace(/:$/, '');
-      if (a === 'navn' || b === 'fane navn') { started = true; continue; }
-    }
-    const c = r.c || [];
-    const navn = (c[idxNavn]?.v ?? '').toString().trim();
-    const fane = (idxFane >= 0 ? (c[idxFane]?.v ?? '') : '').toString().trim();
-    if (navn) result.push({ navn, faneNavn: fane || navn });
-  }
-  sheetPlayers = result;
-  sheetLoaded = true;
-} */
-
-  // --- [CHANGE] Tidligere fetchSheetPlayers => nu netværks-funktion ---
 async function fetchSheetPlayersFromNetwork() {
   sheetLoadError = null;
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
   const where = SHEET_GID ? `${base}&gid=${encodeURIComponent(SHEET_GID)}` :
-                             `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
+                            `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
   const url = `${where}&range=A:B&headers=1`;
-
   const resp = await fetch(url, { cache: 'no-store' });
   if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
   const text = await resp.text();
@@ -211,12 +107,10 @@ async function fetchSheetPlayersFromNetwork() {
   if (!match) throw new Error('Kunne ikke parse gviz-svar');
   const json = JSON.parse(match[1]);
   if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
-
   const cols = (json.table.cols ?? []).map(c => (c.label ?? '').trim().replace(/:$/, '').toLowerCase());
   let idxNavn = cols.indexOf('navn');
   let idxFane = cols.indexOf('fane navn');
   const rows = json.table.rows ?? [];
-
   if (idxNavn === -1 || idxFane === -1) {
     let headerRow = null;
     for (const r of rows) {
@@ -248,19 +142,12 @@ async function fetchSheetPlayersFromNetwork() {
   return result;
 }
 
-// Min. interval for opdatering (kan overskrives ved kald)
 async function refreshSheetPlayersIfOnline(minAgeMs = 0) {
   const { meta } = loadSheetCache();
-
-  // 1) Spring netkald over hvis vi har opdateret for nylig
   if (minAgeMs && meta?.updatedAt && (Date.now() - meta.updatedAt) < minAgeMs) {
     return { changed: false, reason: 'fresh-enough' };
   }
-
-  // 2) Ingen net => ingen opdatering
   if (!navigator.onLine) return { changed: false, reason: 'offline' };
-
-  // 3) Prøv at hente – gem kun hvis der er ændringer
   try {
     const fresh = await fetchSheetPlayersFromNetwork();
     const newHash = calcListHash(fresh);
@@ -277,14 +164,224 @@ async function refreshSheetPlayersIfOnline(minAgeMs = 0) {
   }
 }
 
+// ------------------ Fines: cache & fetch (NY) ------------------
+function loadFinesCache() {
+  try {
+    const list = JSON.parse(localStorage.getItem(FINES_CACHE_KEY) ?? '[]');
+    const meta = JSON.parse(localStorage.getItem(FINES_CACHE_META_KEY) ?? '{}');
+    return { list, meta };
+  } catch {
+    return { list: [], meta: {} };
+  }
+}
+function saveFinesCache(list, meta = {}) {
+  localStorage.setItem(FINES_CACHE_KEY, JSON.stringify(list));
+  localStorage.setItem(FINES_CACHE_META_KEY, JSON.stringify(meta));
+}
+function calcFinesHash(list) {
+  const norm = list.map(f => ({
+    name: (f.name ?? '').trim(),
+    value: Number(f.value ?? 0),
+    type: (f.type ?? '').trim().toLowerCase()
+  }));
+  // Her bevarer vi rækkefølge (hash af sekvensen)
+  return hashString(JSON.stringify(norm));
+}
 
+// Hent bøder fra fanen "Spiller" kolonner D:F (inkl. header-rækken)
+async function fetchFinesFromNetwork() {
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+  const where = SHEET_GID
+    ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
+    : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  // A1-notation: hele kolonner D:F + headers
+  const url = `${where}&range=D:F&headers=1`;
+
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error(`Bøder: hentning fejlede (${resp.status})`);
+
+  const text = await resp.text();
+  const match = text.match(/setResponse\((.*)\)\s*;?\s*$/);
+  if (!match) throw new Error('Bøder: kunne ikke parse gviz-svar');
+  const json = JSON.parse(match[1]);
+  if (!json.table) throw new Error('Bøder: ugyldigt gviz-svar (mangler table)');
+
+  // Normaliser labels
+  const label = (s) => (s ?? '').toString().trim().replace(/:$/, '').toLowerCase();
+
+  // Tillad både dansk og engelsk
+  const isName  = (x) => ['bøde','bode','fine','name'].includes(x);
+  const isValue = (x) => ['værdi','vaerdi','value','beløb','beloeb'].includes(x);
+  const isType  = (x) => ['type','kategori'].includes(x);
+
+  const cols = (json.table.cols ?? []).map(c => label(c.label));
+  let idxName  = cols.findIndex(isName);
+  let idxValue = cols.findIndex(isValue);
+  let idxType  = cols.findIndex(isType);
+
+  const rows = json.table.rows ?? [];
+
+  // Fallback: brug første ikke-tomme række som header, hvis labels mangler
+  if (idxName === -1 || idxValue === -1 || idxType === -1) {
+    let headerRow = null;
+    for (const r of rows) {
+      const a = label(r.c?.[0]?.v), b = label(r.c?.[1]?.v), c = label(r.c?.[2]?.v);
+      if (a && b && c) { headerRow = r; break; }
+    }
+    if (headerRow) {
+      const a = label(headerRow.c?.[0]?.v), b = label(headerRow.c?.[1]?.v), c = label(headerRow.c?.[2]?.v);
+      if (isName(a))  idxName  = 0;
+      if (isValue(b)) idxValue = 1;
+      if (isType(c))  idxType  = 2;
+    }
+  }
+
+  if (idxName === -1)  throw new Error('Bøder: kolonnen "Bøde/fine" blev ikke fundet (i D:F).');
+  if (idxValue === -1) throw new Error('Bøder: kolonnen "Værdi/value" blev ikke fundet (i D:F).');
+  if (idxType === -1)  throw new Error('Bøder: kolonnen "Type" blev ikke fundet (i D:F).');
+
+  // Slugify inkl. danske tegn
+  const slugify = (s) => (s ?? '')
+    .toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[æÆ]/g, 'ae').replace(/[øØ]/g, 'oe').replace(/[åÅ]/g, 'aa')
+    .trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+  const list = [];
+  let started = false;
+  for (const r of rows) {
+    // spring header-rækken over, hvis den ligger i data
+    if (!started) {
+      const a = label(r.c?.[0]?.v), b = label(r.c?.[1]?.v), c = label(r.c?.[2]?.v);
+      if (isName(a) && isValue(b) && isType(c)) { started = true; continue; }
+    }
+    const c = r.c ?? [];
+    const name = (c[idxName]?.v ?? '').toString().trim();
+    if (!name) continue; // ignorér tomme rækker
+    const value = Number((c[idxValue]?.v ?? 0)) || 0;
+    let type = (c[idxType]?.v ?? '').toString().trim().toLowerCase();
+
+    const item = {
+      id: slugify(name),
+      name,
+      value,
+      type: (type === 'derived-check' ? 'derived-check' : (type === 'check' ? 'check' : 'count'))
+    };
+
+    // Særlig regel: "Alle Green Misset" følger værdien fra "Misset Green"
+    if (slugify(name) === 'alle-green-misset' || item.type === 'derived-check') {
+      item.type = 'derived-check';
+      item.source = slugify('Misset Green'); // "misset-green"
+    }
+
+    list.push(item);
+  }
+
+  return list; // rækkefølgen bevares som i arket (D:F)
+}
+
+async function refreshFinesIfOnline(minAgeMs = 0) {
+  const { meta } = loadFinesCache();
+  if (minAgeMs && meta?.updatedAt && (Date.now() - meta.updatedAt) < minAgeMs) {
+    return { changed: false, reason: 'fresh-enough' };
+  }
+  if (!navigator.onLine) return { changed: false, reason: 'offline' };
+  try {
+    const fresh = await fetchFinesFromNetwork();
+    const newHash = calcFinesHash(fresh);
+    if (newHash !== meta?.hash) {
+      saveFinesCache(fresh, { hash: newHash, updatedAt: Date.now() });
+      return { changed: true };
+    }
+    return { changed: false, reason: 'no-change' };
+  } catch (err) {
+    console.error(err);
+    return { changed: false, reason: 'error', error: err };
+  }
+}
+
+async function ensureFinesLoaded(minAgeMs = 0, showToastOnChange = true) {
+  let loaded = false;
+  // 1) Brug cache med det samme (hvis findes)
+  const cached = loadFinesCache();
+  if (cached.list && cached.list.length) {
+    FINES = cached.list;
+    rebuildFineMap();
+    migratePlayersForFines();
+    loaded = true;
+  }
+  // 2) Baggrundsopdatering (kun hvis online / gammel nok)
+  const { changed } = await refreshFinesIfOnline(minAgeMs);
+  if (changed) {
+    const updated = loadFinesCache().list;
+    if (updated.length) {
+      FINES = updated;
+      rebuildFineMap();
+      migratePlayersForFines();
+      if (players.length) renderPanels(); // opdater beløb hvis UI er vist
+      if (showToastOnChange) showToast('Bøder opdateret');
+      loaded = true;
+    }
+  }
+  return loaded;
+}
+
+// ------------------ Persistens for spillere ------------------
+function loadPlayers() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    let migrated = false;
+    parsed.forEach(p => {
+      if (!p.rows) return;
+      const brokSum = (p.rows['brok'] ?? 0) + (p.rows['brok-1'] ?? 0) + (p.rows['brok-2'] ?? 0);
+      if (brokSum !== (p.rows['brok'] ?? 0)) { p.rows['brok'] = brokSum; migrated = true; }
+      delete p.rows['brok-1']; delete p.rows['brok-2'];
+      const fsSum = (p.rows['forkert-scorekort'] ?? 0) + (p.rows['forkert-scorekort-1'] ?? 0) + (p.rows['forkert-scorekort-2'] ?? 0);
+      if (fsSum !== (p.rows['forkert-scorekort'] ?? 0)) { p.rows['forkert-scorekort'] = fsSum; migrated = true; }
+      delete p.rows['forkert-scorekort-1']; delete p.rows['forkert-scorekort-2'];
+      // Bemærk: vi udfylder manglende bødefelter i migratePlayersForFines() når FINES er klar
+    });
+    if (migrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    return parsed;
+  } catch { return []; }
+}
+function savePlayers(players) { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
+
+// Udfyld manglende felter til alle aktuelle bøder
+function migratePlayersForFines() {
+  let migrated = false;
+  players.forEach(p => {
+    if (!p.rows) p.rows = {};
+    FINES.forEach(f => {
+      if (p.rows[f.id] === undefined) {
+        p.rows[f.id] = (f.type === 'count' ? 0 : false);
+        migrated = true;
+      }
+    });
+  });
+  if (migrated) savePlayers(players);
+}
+
+// ------------------ Forretningslogik ------------------
+function getFineValue(id) {
+  return Number(FINE_MAP[id]?.value ?? 0);
+}
+
+function createEmptyRows() {
+  const rows = {};
+  for (const fine of FINES) rows[fine.id] = fine.type === 'count' ? 0 : false;
+  return rows;
+}
 
 function hasDuplicate(displayName, meta){
   const key = normalizeKey(displayName);
   if (players.some(p => normalizeKey(p.name) === key)) return true;
   if (meta?.navn){
     const nkey = normalizeKey(meta.navn);
-    if (players.some(p => normalizeKey(p.meta?.navn || p.name) === nkey)) return true;
+    if (players.some(p => normalizeKey(p.meta?.navn ?? p.name) === nkey)) return true;
   }
   return false;
 }
@@ -293,19 +390,24 @@ function addPlayer(displayName, meta = null) {
   if (!displayName || !displayName.trim()) return;
   if (players.length >= MAX_PLAYERS) { alert(`Du kan højst tilføje ${MAX_PLAYERS} spillere.`); return; }
   if (hasDuplicate(displayName, meta)) { return; } // spring stille over
+  // SIKKERHED: kan ikke oprette spiller uden bøder indlæst
+  if (!FINES.length) {
+    alert('Bøder indlæses første gang. Prøv igen om et øjeblik (eller gå online).');
+    return;
+  }
+
   const p = { id: uid(), name: displayName.trim(), rows: createEmptyRows() };
   if (meta) p.meta = meta;
   players.push(p);
   activePlayerId = p.id;
-  activeView = 'player';
   savePlayers(players);
   render();
 }
 
-function setActivePlayer(playerId) { activeView = 'player'; activePlayerId = playerId; renderTabs(); renderPanels(); }
-function setActiveFines() { activeView = 'fines'; renderTabs(); renderPanels(); }
-function removeAllPlayers() { players = []; activePlayerId = null; activeView = 'player'; savePlayers(players); render(); }
+function setActivePlayer(playerId) { activePlayerId = playerId; renderTabs(); renderPanels(); }
+function removeAllPlayers() { players = []; activePlayerId = null; savePlayers(players); render(); }
 
+// ------------------ Rendering ------------------
 function render() {
   resetBtn.classList.toggle('hidden', players.length === 0);
   document.body.classList.toggle('empty-state', players.length === 0);
@@ -317,75 +419,12 @@ function renderTabs() {
   tabsEl.innerHTML = '';
   players.forEach(p => {
     const b = document.createElement('button');
-    b.className = 'tab-btn' + (activeView==='player' && p.id === activePlayerId ? ' active' : '');
+    b.className = 'tab-btn' + (p.id === activePlayerId ? ' active' : '');
     b.textContent = p.name;
     b.addEventListener('click', () => setActivePlayer(p.id));
     tabsEl.appendChild(b);
   });
-  if (players.length > 0) {
-    const finesTab = document.createElement('button');
-    finesTab.className = 'tab-btn fines-tab' + (activeView==='fines' ? ' active' : '');
-    finesTab.textContent = 'Bøder';
-    finesTab.title = 'Rediger bøde-værdier';
-    finesTab.addEventListener('click', setActiveFines);
-    tabsEl.appendChild(finesTab);
-  }
-}
-
-
-function renderPanels() {
-  panelsEl.innerHTML = '';
-
-  // Valgfrit: spring helt over når tom tilstand
-  //if (players.length === 0 && activeView !== 'fines') return;
-  if (players.length === 0) return; // enklere og sikkert
-
-  const panel = document.createElement('section');
-  panel.className = 'panel';
-  if (activeView === 'fines') {
-    panel.appendChild(buildFinesEditor());
-  } else {
-    const p = players.find(x => x.id === activePlayerId) ?? players[0];
-    if (p) panel.appendChild(buildTableForPlayer(p));
-  }
-  panelsEl.appendChild(panel);
-}
-
-
-function buildFinesEditor() {
-  const table = document.createElement('table');
-  table.className = 'table';
-  const thead = document.createElement('thead');
-  thead.innerHTML = `<tr><th>Bøder:</th><th class="count">Værdi:</th><th></th></tr>`;
-  table.appendChild(thead);
-  const tbody = document.createElement('tbody');
-  FINES.forEach(fine => {
-    if (fine.type === 'derived-check') return;
-    const tr = document.createElement('tr');
-    const tdLabel = document.createElement('td'); tdLabel.className = 'row-label'; tdLabel.textContent = fine.name;
-    const tdCtrl = document.createElement('td'); tdCtrl.className = 'count';
-    const tdEmpty = document.createElement('td');
-    const wrap = document.createElement('div'); wrap.className = 'counter';
-    const minus = document.createElement('button'); minus.className = 'iconbtn minus'; minus.textContent = '−';
-    const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1'; input.className = 'num'; input.value = getFineValue(fine.id);
-    const plus = document.createElement('button'); plus.className = 'iconbtn plus'; plus.textContent = '+';
-    wrap.append(minus, input, plus);
-    function commit(newVal){
-      const v = clamp(parseInt(newVal ?? '0',10), 0, 100000);
-      fineValues[fine.id] = v;
-      input.value = v;
-      saveFineValues(fineValues);
-      if (activeView === 'player') renderPanels();
-    }
-    minus.addEventListener('click', () => commit((parseInt(input.value ?? '0',10))-1));
-    plus.addEventListener('click', () => commit((parseInt(input.value ?? '0',10))+1));
-    input.addEventListener('change', () => commit(input.value));
-    tdCtrl.appendChild(wrap);
-    tr.append(tdLabel, tdCtrl, tdEmpty);
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody);
-  return table;
+  // (Bøder-fanen er fjernet)
 }
 
 function buildTableForPlayer(p) {
@@ -395,16 +434,20 @@ function buildTableForPlayer(p) {
   thead.innerHTML = `<tr><th>Bøder:</th><th class="count">Antal:</th><th class="amount">Beløb:</th></tr>`;
   table.appendChild(thead);
   const tbody = document.createElement('tbody');
+
   let sectionBreakInserted = false;
   FINES.forEach((fine) => {
     const tr = document.createElement('tr');
     const tdLabel = document.createElement('td');
     tdLabel.className = 'row-label';
     tdLabel.textContent = fine.name;
+
     const tdCount = document.createElement('td');
     tdCount.className = 'count';
+
     const tdAmt = document.createElement('td');
     tdAmt.className = 'amount';
+
     if (fine.type === 'count') {
       const wrap = document.createElement('div');
       wrap.className = 'counter';
@@ -429,6 +472,7 @@ function buildTableForPlayer(p) {
       });
       tdCount.appendChild(wrap);
     } else {
+      // check / derived-check
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!p.rows[fine.id];
       cb.addEventListener('change', () => {
         p.rows[fine.id] = cb.checked;
@@ -436,12 +480,16 @@ function buildTableForPlayer(p) {
       });
       tdCount.appendChild(cb);
     }
+
     const amtInput = document.createElement('input');
     amtInput.type = 'text'; amtInput.className = 'amount-field'; amtInput.readOnly = true; amtInput.value = '0';
     amtInput.dataset.fineId = fine.id;
     tdAmt.appendChild(amtInput);
+
     tr.append(tdLabel, tdCount, tdAmt);
     tbody.appendChild(tr);
+
+    // Bevar lille "sektion gap" efter hole-in-one (hvis findes)
     if (!sectionBreakInserted && fine.id === 'hole-in-one') {
       const gap = document.createElement('tr');
       gap.innerHTML = `<td class="section-gap"></td><td class="section-gap"></td><td class="section-gap"></td>`;
@@ -449,6 +497,7 @@ function buildTableForPlayer(p) {
       sectionBreakInserted = true;
     }
   });
+
   const tfoot = document.createElement('tfoot');
   const trTot = document.createElement('tr');
   const tdLbl = document.createElement('td'); tdLbl.textContent = 'At betale:'; tdLbl.className = 'row-label';
@@ -458,10 +507,21 @@ function buildTableForPlayer(p) {
   tdTot.appendChild(totalInput);
   trTot.append(tdLbl, tdEmpty, tdTot);
   tfoot.appendChild(trTot);
+
   table.appendChild(tbody);
   table.appendChild(tfoot);
   updateAmounts(table, p);
   return table;
+}
+
+function renderPanels() {
+  panelsEl.innerHTML = '';
+  if (players.length === 0) return;
+  const panel = document.createElement('section');
+  panel.className = 'panel';
+  const p = players.find(x => x.id === activePlayerId) ?? players[0];
+  if (p) panel.appendChild(buildTableForPlayer(p));
+  panelsEl.appendChild(panel);
 }
 
 function calcAmount(player, fine) {
@@ -496,61 +556,38 @@ function updateAmounts(table, player) {
   if (totalInput) totalInput.value = total.toString();
 }
 
-/* function openPicker() {
-  document.body.classList.add('modal-open');
-  pickerOverlay.classList.remove('hidden');
-  pickerSelected = new Set();
-  updatePickerConfirm();
-  if (!sheetLoaded && !sheetLoadError) {
-    renderPickerList(true);
-    fetchSheetPlayers().then(() => {
-      renderPickerList();
-    }).catch(err => {
-      sheetLoadError = err;
-      console.error(err);
-      renderPickerList();
-    });
-  } else {
-    renderPickerList();
-  }
-} */
+// ------------------ Picker (Tilføj spiller) ------------------
+function remainingSlots(){ return Math.max(0, MAX_PLAYERS - players.length); }
 
-  function openPicker() {
+function openPicker() {
   document.body.classList.add('modal-open');
   pickerOverlay.classList.remove('hidden');
   pickerSelected = new Set();
   updatePickerConfirm();
 
-  // 1) Vis cache straks, hvis vi har en
+  // 1) Vis spillere fra cache straks (hvis findes)
   const cached = loadSheetCache();
   if (cached.list && cached.list.length) {
     sheetPlayers = cached.list;
     sheetLoaded = true;
     renderPickerList(false);
   } else {
-    // Vis "Indlæser..." hvis vi intet cache har
     renderPickerList(true);
   }
 
-  // 2) Forsøg baggrundsopdatering (kun hvis online). Re-render hvis ændret
-  
-  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(({ changed }) => {
-    renderPickerList(false);
-  }).catch(() => {
-    renderPickerList(false);
-  });
+  // 2) Trigger bøder-indlæsning/opdatering i baggrunden
+  ensureFinesLoaded(0).then(() => { /* no-op */ });
 
+  // 3) Opdater spillerlisten i baggrunden (kun hvis online/freshness)
+  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
+    .then(() => renderPickerList(false))
+    .catch(() => renderPickerList(false));
 }
-
-
 function closePicker() {
   pickerOverlay.classList.add('hidden');
   document.body.classList.remove('modal-open');
-  //pickerSearch.value = '';
   pickerSelected = new Set();
 }
-
-function remainingSlots(){ return Math.max(0, MAX_PLAYERS - players.length); }
 
 function updatePickerConfirm(){
   const count = pickerSelected.size;
@@ -568,73 +605,60 @@ function renderPickerList(isLoading = false) {
     pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Kunne ikke hente fra arket: ${sheetLoadError.message}</span></div>`;
     return;
   }
-
-  
-const { meta } = loadSheetCache();
-if (meta.updatedAt) {
-  const info = document.createElement('div');
-  info.className = 'picker-item';
-  info.style.opacity = '0.7';
-  const ts = new Date(meta.updatedAt).toLocaleString('da-DK');
-  info.innerHTML = `<span class="primary-label">Sidst opdateret: ${ts}</span>`;
-  pickerList.appendChild(info);
-}
-
-  //const q = pickerSearch.value.trim().toLowerCase();
-  //const items = sheetPlayers.filter(p => p.navn.toLowerCase().includes(q) || p.faneNavn.toLowerCase().includes(q));
-  const items = sheetPlayers; // Vis alle spillere uden søgning
-
-if (items.length === 0) {
-  const hasCache = (loadSheetCache().list ?? []).length > 0;
-  const msg = !hasCache && !navigator.onLine
-    ? 'Ingen cache tilgængelig – gå online første gang for at hente spillerlisten.'
-    : 'Ingen matches';
-  pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">${msg}</span></div>`;
-  return;
-}
-
+  const { meta } = loadSheetCache();
+  if (meta.updatedAt) {
+    const info = document.createElement('div');
+    info.className = 'picker-item';
+    info.style.opacity = '0.7';
+    const ts = new Date(meta.updatedAt).toLocaleString('da-DK');
+    info.innerHTML = `<span class="primary-label">Sidst opdateret: ${ts}</span>`;
+    pickerList.appendChild(info);
+  }
+  const items = sheetPlayers;
+  if (items.length === 0) {
+    const hasCache = (loadSheetCache().list ?? []).length > 0;
+    const msg = !hasCache && !navigator.onLine
+      ? 'Ingen cache tilgængelig – gå online første gang for at hente spillerlisten.'
+      : 'Ingen matches';
+    pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">${msg}</span></div>`;
+    return;
+  }
   const existingKeys = new Set([
-    ...players.map(p => (p.name || '').toLowerCase()),
-    ...players.map(p => ((p.meta?.navn) || '').toLowerCase())
+    ...players.map(p => (p.name ?? '').toLowerCase()),
+    ...players.map(p => ((p.meta?.navn) ?? '').toLowerCase())
   ]);
   const frag = document.createDocumentFragment();
-
   items.forEach(item => {
     const row = document.createElement('div');
     row.className = 'picker-item';
     row.setAttribute('role', 'option');
 
     const left = document.createElement('div');
-    const primary = document.createElement('div'); primary.className = 'primary-label'; primary.textContent = item.navn; // **fjerner visning af fane-navn**
+    const primary = document.createElement('div'); primary.className = 'primary-label'; primary.textContent = item.navn;
     left.append(primary);
 
-    const key = `${item.faneNavn}||${item.navn}`;
-    const exists = existingKeys.has((item.faneNavn || '').toLowerCase()) || existingKeys.has((item.navn || '').toLowerCase());
+    const key = `${item.faneNavn}\n${item.navn}`;
+    const exists = existingKeys.has((item.faneNavn ?? '').toLowerCase()) ||
+                   existingKeys.has((item.navn ?? '').toLowerCase());
 
     const right = document.createElement('div');
     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'selbox';
     cb.checked = pickerSelected.has(key);
-    cb.disabled = exists || (remainingSlots() - (pickerSelected.has(key)? (pickerSelected.size-1) : pickerSelected.size)) <= 0;
+    cb.disabled = exists || ((remainingSlots() - (pickerSelected.has(key) ? (pickerSelected.size-1) : pickerSelected.size)) <= 0);
 
     function toggle(){
       if (exists) return;
-      // kapacitets-tjek
       const selectedAlready = pickerSelected.has(key);
-      if (!selectedAlready && pickerSelected.size >= remainingSlots()) {
-        return; // ingen pladser
-      }
+      if (!selectedAlready && pickerSelected.size >= remainingSlots()) { return; }
       if (selectedAlready) pickerSelected.delete(key); else pickerSelected.add(key);
       cb.checked = pickerSelected.has(key);
       updatePickerConfirm();
-      // re-render for at opdatere disabled-state på andre checkbokse
       renderPickerList();
     }
-
     row.addEventListener('click', (e) => { if (e.target !== cb) toggle(); });
     cb.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
 
     if (exists) row.classList.add('disabled');
-
     right.appendChild(cb);
     row.append(left, right);
     frag.appendChild(row);
@@ -642,23 +666,21 @@ if (items.length === 0) {
   pickerList.appendChild(frag);
 }
 
-addBtn.addEventListener('click', openPicker);
-pickerClose.addEventListener('click', closePicker);
-pickerOverlay.addEventListener('click', (e) => {
-  if (e.target === pickerOverlay) closePicker();
-});
-//pickerSearch.addEventListener('input', () => renderPickerList());
+// Confirm-knap — gør asynkron for at sikre bøder er klar
+pickerConfirm.addEventListener('click', async () => {
+  // Sørg for at bøder er indlæst (første gang)
+  await ensureFinesLoaded(0, false);
+  if (!FINES.length) {
+    alert('Bøder kunne ikke hentes første gang. Gå online og prøv igen.');
+    return;
+  }
 
-pickerConfirm.addEventListener('click', () => {
   const selectedKeys = Array.from(pickerSelected);
   if (selectedKeys.length === 0) return;
-  // tilføj i den rækkefølge de vises i den aktuelle filtrerede liste
-  //const q = pickerSearch.value.trim().toLowerCase();
-  //const items = sheetPlayers.filter(p => p.navn.toLowerCase().includes(q) || p.faneNavn.toLowerCase().includes(q));
-  const items = sheetPlayers; // ingen søgning – brug hele listen som vist
+  const items = sheetPlayers;
   let slots = remainingSlots();
   for (const it of items) {
-    const key = `${it.faneNavn}||${it.navn}`;
+    const key = `${it.faneNavn}\n${it.navn}`;
     if (!selectedKeys.includes(key)) continue;
     if (slots <= 0) break;
     const display = it.faneNavn || it.navn;
@@ -670,6 +692,11 @@ pickerConfirm.addEventListener('click', () => {
   closePicker();
 });
 
+// ------------------ Reset-dialog ------------------
+addBtn.addEventListener('click', openPicker);
+pickerClose.addEventListener('click', closePicker);
+pickerOverlay.addEventListener('click', (e) => { if (e.target === pickerOverlay) closePicker(); });
+
 resetBtn.addEventListener('click', () => { document.body.classList.add('modal-open'); overlay.classList.remove('hidden'); });
 confirmNo.addEventListener('click', () => { overlay.classList.add('hidden'); document.body.classList.remove('modal-open'); });
 confirmYes.addEventListener('click', () => {
@@ -678,14 +705,49 @@ confirmYes.addEventListener('click', () => {
   removeAllPlayers();
 });
 
+// ------------------ Toast (lille popup i 2 sek.) ------------------
+let toastTimer = null;
+function showToast(msg) {
+  let t = document.getElementById('fgl-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'fgl-toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ------------------ Init ------------------
 if (players.length > 0) { activePlayerId = players[0].id; }
 render();
 
-
+// Når vi kommer online, prøv at opdatere både spillere og bøder
 window.addEventListener('online', () => {
   refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(({ changed }) => {
     if (changed) renderPickerList(false);
   });
+  refreshFinesIfOnline(MIN_REFRESH_INTERVAL_MS).then(({ changed }) => {
+    if (changed) {
+      const updated = loadFinesCache().list;
+      if (updated.length) {
+        FINES = updated; rebuildFineMap(); migratePlayersForFines();
+        if (players.length) renderPanels();
+        showToast('Bøder opdateret');
+      }
+    }
+  });
 });
 
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'NEW_VERSION') {
+      console.log('Ny version fundet – genindlæser...');
+      window.location.reload();
+    }
+  });
+}

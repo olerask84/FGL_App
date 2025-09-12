@@ -80,3 +80,20 @@ body.empty-state #addPlayerBtn {
   }
 }
 
+/* --- Lille toast (popup) nederst i 2 sek.) --- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  background: var(--brand);
+  color: #fff;
+  padding: .6rem .9rem;
+  border-radius: .5rem;
+  box-shadow: 0 6px 16px rgba(0,0,0,.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+  z-index: 2000;
+}
+.toast.show { opacity: .98; }
