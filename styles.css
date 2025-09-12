@@ -1,20 +1,19 @@
 * { box-sizing: border-box; }
 :root { --bg:#f3f6f9; --card:#fff; --ink:#0b1f2a; --muted:#6b7c86; --brand:#0a3d62; --danger:#b00020; --border:#d9e1e8; }
 html,body{height:100%}
-/* body{margin:0;font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
- */
+body{margin:0;font:16px/1.4 system-ui,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
 body::before{content:"";position:fixed;inset:0;background-image:url('assets/icons/FGL_192_VM.png');background-repeat:repeat;background-size:128px 128px;opacity:.08;pointer-events:none;z-index:0}
 #app{position:relative;z-index:1}
-.topbar{display:grid;grid-template-columns:auto auto;gap:.5rem;padding:.75rem;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
+.topbar{display:grid;grid-template-columns:auto auto auto;gap:.5rem;padding:.75rem;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
 .btn{appearance:none;border:1px solid var(--border);background:#fff;color:var(--ink);padding:.55rem .9rem;border-radius:.5rem;cursor:pointer;font-weight:600}
 .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
 .btn.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
 .btn:disabled{opacity:.6;cursor:not-allowed}
 .hidden{display:none!important}
+.end-round-btn.btn.primary{ background-color:#4CAF50; border-color:#4CAF50; }
 .tabs{display:flex;gap:.4rem;padding:.6rem .6rem 0;flex-wrap:nowrap;overflow-x:auto}
 .tab-btn{background:var(--card);border:1px solid var(--border);padding:.4rem .7rem;border-top-left-radius:.5rem;border-top-right-radius:.5rem;cursor:pointer;font-weight:600;color:var(--muted);white-space:nowrap}
 .tab-btn.active{background:#fff;color:var(--ink);border-bottom-color:#fff}
-.tab-btn.fines-tab{margin-left:auto}
 .tab-panels{padding:.6rem}
 .panel{position:relative;background:#fff;border:1px solid var(--border);border-radius:.6rem;padding:.75rem;overflow:hidden}
 .panel::before{content:"";position:absolute;inset:0;background-image:url('assets/icons/FGL_192_VM.png');background-repeat:no-repeat;background-position:center;background-size:min(75vw,520px);opacity:.08;pointer-events:none}
@@ -35,6 +34,7 @@ body::before{content:"";position:fixed;inset:0;background-image:url('assets/icon
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:1000}
 .dialog{background:#fff;border-radius:.6rem;padding:1rem;width:min(92vw,420px);box-shadow:0 12px 32px rgba(0,0,0,.35);z-index:1001}
 .dialog .actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem}
+.dialog input[type="text"]{width:100%;padding:.6rem;border:1px solid var(--border);border-radius:.5rem;margin-top:.5rem}
 body.modal-open{overflow:hidden}
 @media(min-width:700px){.panel{max-width:720px;margin-inline:auto}}
 .picker-list{margin-top:.5rem;max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:.5rem;background:#fff}
@@ -42,58 +42,11 @@ body.modal-open{overflow:hidden}
 .picker-item:last-child{border-bottom:none}
 .picker-item:hover{background:#f6f9ff}
 .picker-item .primary-label{font-weight:700}
-/* Deaktivér rækker, der allerede er tilføjet */
 .picker-item.disabled{opacity:.6;cursor:not-allowed}
-/* Checkbox-størrelse */
 .selbox{width:1.15rem;height:1.15rem}
-
-/* ===== Tom tilstand: centrer "Tilføj spiller" ===== */
-body.empty-state .topbar {
-  background: transparent;
-  border-bottom: 0;
-}
-
-/* Skjul alt andet UI i tom tilstand */
-body.empty-state .tabs,
-body.empty-state .tab-panels,
-body.empty-state #resetBtn {
-  display: none !important;
-}
-
-/* Centrer selve knappen */
-body.empty-state #addPlayerBtn {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -55%); /* en anelse højere end helt center */
-  z-index: 3;                        /* over panel, under modal (overlay har 1000) */
-  padding: 1rem 1.2rem;
-  font-size: 1.125rem;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, .20);
-  border-radius: .6rem;
-}
-
-/* Små forbedringer til trykbarhed på mobil */
-@media (hover: none) {
-  body.empty-state #addPlayerBtn {
-    padding: 1.1rem 1.3rem;
-  }
-}
-
-/* --- Lille toast (popup) nederst i 2 sek.) --- */
-.toast {
-  position: fixed;
-  left: 50%;
-  bottom: 1rem;
-  transform: translateX(-50%);
-  background: var(--brand);
-  color: #fff;
-  padding: .6rem .9rem;
-  border-radius: .5rem;
-  box-shadow: 0 6px 16px rgba(0,0,0,.3);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .2s ease;
-  z-index: 2000;
-}
+body.empty-state .topbar { background: transparent; border-bottom: 0; }
+body.empty-state .tabs, body.empty-state .tab-panels, body.empty-state #resetBtn, body.empty-state #endRoundBtn { display: none !important; }
+body.empty-state #addPlayerBtn { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -55%); z-index: 3; padding: 1rem 1.2rem; font-size: 1.125rem; box-shadow: 0 8px 20px rgba(0, 0, 0, .20); border-radius: .6rem; }
+@media (hover: none) { body.empty-state #addPlayerBtn { padding: 1.1rem 1.3rem; } }
+.toast { position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); background: var(--brand); color: #fff; padding: .6rem .9rem; border-radius: .5rem; box-shadow: 0 6px 16px rgba(0,0,0,.3); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 2000; }
 .toast.show { opacity: .98; }

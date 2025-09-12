@@ -15,9 +15,11 @@
   <div id="app">
     <header class="topbar">
       <button id="addPlayerBtn" class="btn primary" aria-label="Tilføj spiller">Tilføj spiller</button>
+      <button id="endRoundBtn" class="btn primary hidden end-round-btn" aria-label="Afslut runde">Afslut runde</button>
       <button id="resetBtn" class="btn danger hidden" aria-label="Nulstil app">Reset</button>
     </header>
-    <nav id="tabs" class="tabs" aria-label="Spillere og bøder (faner)"></nav>
+
+    <nav id="tabs" class="tabs" aria-label="Spillere (faner)"></nav>
     <main id="tabPanels" class="tab-panels"></main>
   </div>
 
@@ -37,7 +39,6 @@
   <div id="pickerOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
     <div class="dialog" role="document">
       <h3 id="pickerTitle">Vælg spillere</h3>
-      <!--input id="pickerSearch" type="text" placeholder="Søg efter navn..." aria-label="Søg i spillere" /-->
       <div id="pickerList" class="picker-list" role="listbox" aria-label="Spillerliste"></div>
       <div class="actions">
         <button id="pickerConfirm" class="btn primary" disabled>OK</button>
@@ -46,9 +47,32 @@
     </div>
   </div>
 
+  <!-- Afslut runde: bekræft -->
+  <div id="endRoundOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="endRoundTitle">
+    <div class="dialog" role="document">
+      <h3 id="endRoundTitle">Afslut runde?</h3>
+      <p id="endRoundMessage">Vil du afslutte runden og indsende data?</p>
+      <div class="actions">
+        <button id="endRoundConfirmYes" class="btn primary">Ja</button>
+        <button id="endRoundConfirmNo" class="btn">Nej</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Afslut runde: indtast bane -->
+  <div id="courseNameOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="courseNameTitle">
+    <div class="dialog" role="document">
+      <h3 id="courseNameTitle">Indtast bane</h3>
+      <input type="text" id="courseNameInput" placeholder="Bane-navn..." />
+      <div class="actions">
+        <button id="courseNameOk" class="btn primary">OK</button>
+        <button id="courseNameCancel" class="btn">Annuller</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
   <script>
-    // Registrér SW kun over http(s), så lokal åbning (file://) ikke fejler
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js'));
     }
