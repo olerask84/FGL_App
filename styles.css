@@ -161,6 +161,7 @@ body.empty-state #addPlayerBtn { position: fixed; top: 50%; left: 50%; transform
 }
 .sheet-table.sticky-top-rows tr:nth-child(2) th {
   top: 2.2rem; /* justér afhængigt af header-højde */
+  z-index: 5
 }
 
 
