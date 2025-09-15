@@ -230,8 +230,6 @@ async function fetchSheetTabAsTable(tabName) {
 }
 
 
-
-
 // --- Vis viewer ---
 function openSheetViewer(tabName) {
   sheetViewerTitle.textContent = tabName;
