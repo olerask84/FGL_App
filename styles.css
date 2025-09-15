@@ -147,11 +147,22 @@ body.empty-state #addPlayerBtn { position: fixed; top: 50%; left: 50%; transform
   position: sticky;
   left: 0;
   background: #fff;                /* dækker vandmærke */
-  z-index: 3;
+  z-index: 6;
   box-shadow: 1px 0 0 var(--border); /* lodret skillelinje */
   transform: translateZ(0);
 }
 .sheet-table.sticky-first-col th:first-child { z-index: 4; }
+
+.sheet-table.sticky-top-rows th {
+  position: sticky;
+  top: 0;
+  background: #f6f9ff;
+  z-index: 5;
+}
+.sheet-table.sticky-top-rows tr:nth-child(2) th {
+  top: 2.2rem; /* justér afhængigt af header-højde */
+}
+
 
 /* Nulstil utils – hvis noget har margin-top */
 .sheet-viewer-content > *:first-child { margin-top: 0; }

@@ -254,8 +254,13 @@ function openSheetViewer(tabName) {
         sheetViewerContent.innerHTML = '<div class="sheet-empty">Intet indhold i arket.</div>';
         return;
       }
-      const sticky = tabName.toLowerCase() === 'total';                  // <— NYT
-      const html = renderArrayAsHtmlTable(table, { stickyFirstCol: sticky }); // <— NYT
+
+      const sticky = tabName.toLowerCase() === 'total';
+      const html = renderArrayAsHtmlTable(table, {
+        stickyFirstCol: sticky,
+        stickyTopRows: sticky
+      });
+
       sheetViewerContent.innerHTML = html;
     } catch (err) {
       sheetViewerContent.innerHTML = `
@@ -268,19 +273,30 @@ function openSheetViewer(tabName) {
 
 
 
+
 function closeSheetViewer() {
   sheetViewer.classList.add('hidden');
   sheetViewerContent.innerHTML = '';
 }
 
 function renderArrayAsHtmlTable(arr, opts = {}) {
-  const { stickyFirstCol = false } = opts;
+  const { stickyFirstCol = false, stickyTopRows = false } = opts;
   const [header, ...rows] = arr;
-  const cls = 'sheet-table' + (stickyFirstCol ? ' sticky-first-col' : '');
-  const ths = header ? `<tr>${header.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>` : '';
-  const trs = rows.map(r => `<tr>${r.map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('');
+  const cls = 'sheet-table' +
+    (stickyFirstCol ? ' sticky-first-col' : '') +
+    (stickyTopRows ? ' sticky-top-rows' : '');
+
+  const ths = header
+    ? `<tr>${header.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>`
+    : '';
+
+  const trs = rows.map(r =>
+    `<tr>${r.map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`
+  ).join('');
+
   return `<table class="${cls}">${ths}${trs}</table>`;
 }
+
 
 
 
