@@ -63,12 +63,77 @@ const courseNameInput = document.getElementById('courseNameInput');
 const courseNameOk = document.getElementById('courseNameOk');
 const courseNameCancel = document.getElementById('courseNameCancel');
 
+// --- Menu / Viewer (NYT) ---
+const menuBtn = document.getElementById('menuBtn');
+const menuOverlay = document.getElementById('menuOverlay');
+const menuList = document.getElementById('menuList');
+const menuClose = document.getElementById('menuClose');
+
+const sheetViewer = document.getElementById('sheetViewer');
+const sheetViewerTitle = document.getElementById('sheetViewerTitle');
+const sheetViewerContent = document.getElementById('sheetViewerContent');
+const sheetBack = document.getElementById('sheetBack');
+
+// Udled unikke faner fra "Spiller"-arket (kolonnen "Fane Navn"),
+// ekskl. Noter/Spiller – og sørg for at "Total" ALTID er med og øverst.
+
+function getAvailableTabsFromPlayers() {
+  const names = new Set();
+  const list = (sheetPlayers ?? []);
+  for (const it of list) {
+    const n = (it.faneNavn ?? '').toString().trim();
+    if (!n) continue;
+    const low = n.toLowerCase();
+    if (low === 'noter' || low === 'spiller') continue;
+    names.add(n);
+  }
+  names.add('Total');
+  const arr = Array.from(names).sort((a,b) => a.localeCompare(b, 'da'));
+  const idx = arr.findIndex(x => x.toLowerCase() === 'total');
+  if (idx > 0) { arr.splice(idx, 1); arr.unshift('Total'); }
+  return arr;
+}
+
+
+
 // -------------------------------- Utils --------------------------------
 function uid() { return 'p-' + Math.random().toString(36).slice(2, 9); }
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 function normalizeKey(s){ return (s ?? '').toString().trim().toLowerCase(); }
 function slugify(s) { return (s ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[æÆ]/g, 'ae').replace(/[øØ]/g, 'oe').replace(/[åÅ]/g, 'aa').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
 function hashString(str) { let h = 0x811c9dc5 >>> 0; for (let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,0x01000193);} return (h>>>0).toString(16); }
+
+
+// Robust GViz-parser uden regex: finder JSON-objektet ved at balancere { ... }
+function parseGViz(text) {
+  const anchor = text.indexOf('setResponse');
+  if (anchor === -1) throw new Error('Kunne ikke parse gviz-svar');
+
+  const start = text.indexOf('{', anchor);
+  if (start === -1) throw new Error('Kunne ikke parse gviz-svar');
+
+  let i = start;
+  let depth = 0, inStr = false, esc = false;
+  for (; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (ch === '\\') { esc = true; continue; }
+      if (ch === '"') inStr = false;
+    } else {
+      if (ch === '"') inStr = true;
+      else if (ch === '{') depth++;
+      else if (ch === '}') { depth--; if (depth === 0) { i++; break; } }
+    }
+  }
+  if (depth !== 0) throw new Error('Ugyldigt gviz-svar (ubalanserede {})');
+
+  const jsonStr = text.slice(start, i);
+  return JSON.parse(jsonStr);
+}
+
+
+
 
 // ---------------------- Players: cache & fetch ----------------------
 function loadSheetCache() { try { const list = JSON.parse(localStorage.getItem(SHEET_CACHE_KEY) ?? '[]'); const meta = JSON.parse(localStorage.getItem(SHEET_CACHE_META_KEY) ?? '{}'); return { list, meta }; } catch { return { list: [], meta: {} }; } }
@@ -121,6 +186,123 @@ async function refreshSheetPlayersIfOnline(minAgeMs = 0) {
     return { changed: false, reason: 'no-change' };
   } catch (err) { sheetLoadError = err; return { changed: false, reason: 'error', error: err }; }
 }
+
+// --- GViz: hent hele fanen som 2D-array (formatterede værdier hvis muligt)
+async function fetchSheetTabAsTable(tabName) {
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+  const url = `${base}&sheet=${encodeURIComponent(tabName)}`;
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
+
+  const text = await resp.text();
+  
+  console.debug('[GViz]', tabName, 'url=', url);
+  console.debug('[GViz] head=', (text || '').slice(0, 200));
+
+  const json = parseGViz(text); // <— robust parser uden regex
+
+  if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
+  const cols = (json.table.cols || []);
+  const rows = (json.table.rows || []);
+  const out = [];
+
+  // Header-række (labels)
+  if (cols.length) out.push(cols.map(c => (c?.label ?? '').toString()));
+
+  // Data-rækker
+  for (const r of rows) {
+    const c = r.c || [];
+    const row = c.map(cell => {
+      if (!cell) return '';
+      const f = (cell.f != null) ? String(cell.f) : null;
+      const v = (cell.v != null) ? String(cell.v) : '';
+      return f ?? v; // brug formatteret værdi når muligt
+    });
+    // Trim højre side for tomme celler
+    let last = row.length - 1;
+    while (last >= 0 && (row[last] == null || row[last] === '')) last--;
+    out.push(row.slice(0, last + 1));
+  }
+
+  // Fjern tomme hale-rækker
+  while (out.length && out[out.length - 1].every(x => (x ?? '') === '')) out.pop();
+  return out;
+}
+
+
+
+
+// --- Vis viewer ---
+function openSheetViewer(tabName) {
+  sheetViewerTitle.textContent = tabName;
+  sheetViewerContent.innerHTML = '<div class="sheet-empty">Indlæser…</div>';
+  sheetViewer.classList.remove('hidden');
+
+  if (!navigator.onLine) {
+    sheetViewerContent.innerHTML = `
+      <div class="sheet-offline">
+        <strong>Ikke online.</strong> Kunne ikke hente data fra arket.<br/>
+        Prøv igen, når du er online.
+      </div>`;
+    return;
+  }
+
+  (async () => {
+    try {
+      const table = await fetchSheetTabAsTable(tabName);
+      if (!table.length) {
+        sheetViewerContent.innerHTML = '<div class="sheet-empty">Intet indhold i arket.</div>';
+        return;
+      }
+      const sticky = tabName.toLowerCase() === 'total';                  // <— NYT
+      const html = renderArrayAsHtmlTable(table, { stickyFirstCol: sticky }); // <— NYT
+      sheetViewerContent.innerHTML = html;
+    } catch (err) {
+      sheetViewerContent.innerHTML = `
+        <div class="sheet-offline">
+          <strong>Fejl:</strong> ${String(err)}
+        </div>`;
+    }
+  })();
+}
+
+
+
+function closeSheetViewer() {
+  sheetViewer.classList.add('hidden');
+  sheetViewerContent.innerHTML = '';
+}
+
+function renderArrayAsHtmlTable(arr, opts = {}) {
+  const { stickyFirstCol = false } = opts;
+  const [header, ...rows] = arr;
+  const cls = 'sheet-table' + (stickyFirstCol ? ' sticky-first-col' : '');
+  const ths = header ? `<tr>${header.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>` : '';
+  const trs = rows.map(r => `<tr>${r.map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('');
+  return `<table class="${cls}">${ths}${trs}</table>`;
+}
+
+
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
+
+
+
+// Tilbage-knap
+if (sheetBack) sheetBack.addEventListener('click', closeSheetViewer);
+
+// Opdater viewer hvis forbindelsen kommer tilbage mens den er åben
+window.addEventListener('online', () => {
+  if (!sheetViewer.classList.contains('hidden')) {
+    const tabName = sheetViewerTitle.textContent || '';
+    if (tabName) openSheetViewer(tabName);
+  }
+});
+
 
 // ---------------------- Fines: cache & fetch ----------------------
 function loadFinesCache() { try { const list = JSON.parse(localStorage.getItem(FINES_CACHE_KEY) ?? '[]'); const meta = JSON.parse(localStorage.getItem(FINES_CACHE_META_KEY) ?? '{}'); return { list, meta }; } catch { return { list: [], meta: {} }; } }
@@ -198,7 +380,7 @@ function setActivePlayer(playerId) { activePlayerId = playerId; renderTabs(); re
 function removeAllPlayers() { players = []; activePlayerId = null; savePlayers(players); render(); }
 
 // ---------------------------- Rendering ----------------------------
-function render() { resetBtn.classList.toggle('hidden', players.length === 0); if (endRoundBtn) endRoundBtn.classList.toggle('hidden', players.length === 0); document.body.classList.toggle('empty-state', players.length === 0); renderTabs(); renderPanels(); }
+function render() { resetBtn.classList.toggle('hidden', players.length === 0); if (endRoundBtn) endRoundBtn.classList.toggle('hidden', players.length === 0); document.body.classList.toggle('empty-state', players.length === 0); if (menuBtn) menuBtn.classList.toggle('hidden', players.length > 0); renderTabs(); renderPanels(); }
 function renderTabs() { tabsEl.innerHTML = ''; players.forEach(p => { const b = document.createElement('button'); b.className = 'tab-btn' + (p.id === activePlayerId ? ' active' : ''); b.textContent = p.name; b.addEventListener('click', () => setActivePlayer(p.id)); tabsEl.appendChild(b); }); }
 
 function buildTableForPlayer(p) {
@@ -270,6 +452,64 @@ function renderPickerList(isLoading = false) { pickerList.innerHTML = ''; if (is
 
 // Confirm-knap i picker
 pickerConfirm.addEventListener('click', async () => { await ensureFinesLoaded(0, false); if (!FINES.length) { alert('Bøder kunne ikke hentes første gang. Gå online og prøv igen.'); return; } const selectedKeys = Array.from(pickerSelected); if (selectedKeys.length === 0) return; const items = sheetPlayers; let slots = remainingSlots(); for (const it of items) { const key = `${it.faneNavn}\n${it.navn}`; if (!selectedKeys.includes(key)) continue; if (slots <= 0) break; const display = it.faneNavn || it.navn; if (!hasDuplicate(display, { navn: it.navn })) { addPlayer(display, { navn: it.navn }); slots--; } } closePicker(); });
+
+// --- MENU: Åbn/luk ---
+function openMenu() {
+  document.body.classList.add('modal-open');
+  menuOverlay.classList.remove('hidden');
+
+  // 1) Brug cache straks
+  const cached = loadSheetCache();
+  if (cached.list && cached.list.length) {
+    sheetPlayers = cached.list;
+    sheetLoaded = true;
+  }
+  renderMenuList();
+
+  // 2) Forsøg frisk netværks-hentning – tegn igen uanset hash
+  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
+    .finally(() => {
+      const c2 = loadSheetCache();
+      if (c2.list && c2.list.length) sheetPlayers = c2.list;
+      renderMenuList();
+    });
+}
+
+
+function closeMenu() {
+  menuOverlay.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+function renderMenuList() {
+  const tabs = getAvailableTabsFromPlayers();
+  if (!tabs.length) {
+    menuList.innerHTML = `<div class="menu-item"><span class="name">Ingen faner fundet</span></div>`;
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  tabs.forEach(name => {
+    const row = document.createElement('div');
+    row.className = 'menu-item';
+    const left = document.createElement('div');
+    left.className = 'name';
+    left.textContent = name;
+    row.append(left);
+    row.addEventListener('click', () => { closeMenu(); openSheetViewer(name); });
+    frag.appendChild(row);
+  });
+  menuList.innerHTML = '';
+  menuList.appendChild(frag);
+}
+
+
+// Events
+if (menuBtn) menuBtn.addEventListener('click', openMenu);
+if (menuClose) menuClose.addEventListener('click', closeMenu);
+if (menuOverlay) menuOverlay.addEventListener('click', (e) => {
+  if (e.target === menuOverlay) closeMenu();
+});
+
 
 // ---------------------------- Reset & dialogs ----------------------------
 addBtn.addEventListener('click', openPicker);

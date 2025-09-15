@@ -50,3 +50,127 @@ body.empty-state #addPlayerBtn { position: fixed; top: 50%; left: 50%; transform
 @media (hover: none) { body.empty-state #addPlayerBtn { padding: 1.1rem 1.3rem; } }
 .toast { position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); background: var(--brand); color: #fff; padding: .6rem .9rem; border-radius: .5rem; box-shadow: 0 6px 16px rgba(0,0,0,.3); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 2000; }
 .toast.show { opacity: .98; }
+
+/* --- Hamburger/menuknap --- */
+#menuBtn {
+  position: absolute;         /* sidder øverst til højre i topbaren */
+  top: .75rem;
+  right: .75rem;
+  line-height: 1;
+  padding: .45rem .6rem;
+  font-size: 1.1rem;
+  z-index: 4;
+}
+.btn.icon-only { width: 2.2rem; text-align: center; }
+
+/* Skjul menu-knap når der er spillere (styres også fra JS for tilgængelighed) */
+.hidden { display: none !important; } /* findes allerede */
+
+/* --- Menuoverlay --- */
+.menu-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.menu-list { margin-top: .5rem; max-height: 50vh; overflow: auto; border: 1px solid var(--border); border-radius: .5rem; background: #fff; }
+.menu-item { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.55rem .7rem; border-bottom:1px solid var(--border); cursor:pointer; }
+.menu-item:last-child { border-bottom:none; }
+.menu-item:hover { background:#f6f9ff; }
+.menu-item .name { font-weight: 700; }
+.menu-item .hint { color: var(--muted); font-size: .9rem; }
+
+
+
+/* === SHEET VIEWER: fuldskærm, vandmærke og stacking === */
+.sheet-viewer {
+  position: fixed;
+  inset: 0;                        /* dækker hele viewport */
+  display: flex;
+  flex-direction: column;
+  z-index: 1500;                   /* over .topbar (z-index:2) og .toast (2000? justér evt.) */
+  background: var(--bg);           /* gør underliggende UI usynligt */
+  color: var(--ink);
+}
+.sheet-viewer::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url('assets/icons/FGL_192_VM.png');
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  opacity: .08;
+  pointer-events: none;
+  z-index: 0;
+}
+.sheet-viewer-header,
+.sheet-viewer-content { position: relative; z-index: 1; }
+
+.sheet-viewer-header {
+  background: var(--card);
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
+  /* iOS notch-sikkerhed (valgfri): */
+  padding-top: calc(.6rem + env(safe-area-inset-top, 0px));
+}
+.sheet-viewer-title { margin: 0; font-size: 1.05rem; font-weight: 700; }
+
+/* Scroll-område for tabellen */
+.sheet-viewer-content {
+  padding: .75rem;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+
+/* === TABEL: gridlinjer + sticky-kompatibel opsætning === */
+.sheet-table {
+  min-width: 100%;
+  border-collapse: separate;       /* vigtigt for sticky på th/td */
+  border-spacing: 0;               /* bevar "grid"-look */
+  background: #fff; color: var(--ink);
+  border-radius: .6rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,.25);
+}
+
+/* Sikre gridlinjer på alle kanter – med lidt ekstra specificitet */
+.sheet-viewer .sheet-table th,
+.sheet-viewer .sheet-table td {
+  border: 1px solid var(--border) !important;
+  padding: .4rem .45rem;
+  vertical-align: top;
+  background-clip: padding-box;    /* hjælper rendering ved sticky */
+}
+.sheet-viewer .sheet-table th {
+  background: #f6f9ff;
+  text-align: left;
+  font-weight: 700;
+}
+
+/* Sticky første kolonne (Total) */
+.sheet-table.sticky-first-col th:first-child,
+.sheet-table.sticky-first-col td:first-child {
+  position: sticky;
+  left: 0;
+  background: #fff;                /* dækker vandmærke */
+  z-index: 3;
+  box-shadow: 1px 0 0 var(--border); /* lodret skillelinje */
+  transform: translateZ(0);
+}
+.sheet-table.sticky-first-col th:first-child { z-index: 4; }
+
+/* Nulstil utils – hvis noget har margin-top */
+.sheet-viewer-content > *:first-child { margin-top: 0; }
+
+/* === Tilbage-knap: kompakt og samme blå som "Tilføj spiller" === */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  flex: 0 0 auto;
+  line-height: 1;
+  padding: .35rem .55rem;          /* kun indholdets bredde + lidt luft */
+  border-radius: .5rem;
+  background: var(--brand);
+  color: #fff;
+  border: 1px solid var(--brand);
+  font-weight: 600;
+  font-size: .95rem;
+  cursor: pointer;
+}
+.back-btn:focus-visible { outline: 2px solid rgba(10,61,98,.25); }
+
