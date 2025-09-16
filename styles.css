@@ -132,5 +132,5 @@ body.empty-state #addPlayerBtn { position: fixed; top: 50%; left: 50%; transform
 .sheet-viewer-content > *:first-child { margin-top: 0; }
 
 /* Tilbage-knap */
-.back-btn { display: inline-flex; align-items: center; gap: .35rem; flex: 0 0 auto; line-height: 1; padding: .35rem .55rem; border-radius: .5rem; background: var(--brand); color: #fff; border: 1px solid var(--brand); font-weight: 600; font-size: 2rem; cursor: pointer; }
+.back-btn { display: inline-flex; align-items: center; gap: .35rem; flex: 0 0 auto; line-height: 1; padding: .35rem .55rem; border-radius: .5rem; background: var(--brand); color: #fff; border: 1px solid var(--brand); font-weight: 600; font-size: 3rem; cursor: pointer; }
 .back-btn:focus-visible { outline: 2px solid rgba(10,61,98,.25); }
