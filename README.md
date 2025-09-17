@@ -7,8 +7,9 @@ Appen kan installeres på **Android** (Chrome/Edge) og **iOS** (Safari), virker 
 > - Tilføj op til **4 spillere** – hver får sin egen fane.
 > - Brug `+ / −` på tælle-bøder og **checkbox** på engangsbøder.
 > - Alle beløb beregnes automatisk, inkl. **At betale** (sum).
-> - **Bøder**-fanen (i højre side) lader dig **redigere bødeværdier** globalt.
-> - **Reset** nulstiller **kun spillere** – **bødeværdier bevares** (v6).
+> - **Afslut runde** alle bøder sendes til Google Sheet og resetter appen.
+> - **Reset** Resetter appen.
+> - **"Menu"** få vist en "Menu" hvor man kan se hvad folk skylder.
 
 ---
 
