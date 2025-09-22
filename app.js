@@ -1,10 +1,9 @@
-// -------------------------- app.js (v21 + v22 sticky merge, 1 sticky række) --------------------------
 // Bevarer v21-funktionalitet (picker, faner, sending, cache), bruger robust GViz-parsing,
 // og viewer-tabel med sticky thead (KUN 1 række) + sticky første kolonne på "Total".
-
 const STORAGE_KEY = 'fgl.players.v1';
 const MAX_PLAYERS = 4;
-const MIN_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 timer
+const MIN_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
+// 4 timer
 
 // === Afslut runde backend-konfiguration ===
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnrBXAAL3wf1GMxZo4P-cWL-MGVPj4TtVhSHZc7Pp46VKK6aD84MfH3BIE56rUU9stCQ/exec';
@@ -21,14 +20,15 @@ const SHEET_GID = '';
 // Offline-cache til spillerlisten
 const SHEET_CACHE_KEY = 'fgl.sheet.players.v1';
 const SHEET_CACHE_META_KEY = 'fgl.sheet.players.meta.v1';
-
 // Offline-cache til bødelisten
 const FINES_CACHE_KEY = 'fgl.sheet.fines.v1';
 const FINES_CACHE_META_KEY = 'fgl.sheet.fines.meta.v1';
 
 // Dynamiske bøder
-let FINES = [];   // [{id, name, type: 'count'|'check'|'derived-check', value, [source]}]
-let FINE_MAP = {}; // id -> fine
+let FINES = [];
+// [{id, name, type: 'count'|'check'|'derived-check', value, [source]}]
+let FINE_MAP = {};
+// id -> fine
 function rebuildFineMap(){ FINE_MAP = Object.fromEntries(FINES.map(f => [f.id, f])); }
 
 // UI / app-state
@@ -54,7 +54,6 @@ let pickerSelected = new Set();
 let sheetPlayers = [];  // [{navn, faneNavn}]
 let sheetLoaded = false;
 let sheetLoadError = null;
-
 // Afslut runde elementer
 const endRoundBtn = document.getElementById('endRoundBtn');
 const endRoundOverlay = document.getElementById('endRoundOverlay');
@@ -64,17 +63,26 @@ const courseNameOverlay = document.getElementById('courseNameOverlay');
 const courseNameInput = document.getElementById('courseNameInput');
 const courseNameOk = document.getElementById('courseNameOk');
 const courseNameCancel = document.getElementById('courseNameCancel');
-
 // Menu / Viewer
 const menuBtn = document.getElementById('menuBtn');
 const menuOverlay = document.getElementById('menuOverlay');
 const menuList = document.getElementById('menuList');
 const menuClose = document.getElementById('menuClose');
-
 const sheetViewer = document.getElementById('sheetViewer');
 const sheetViewerTitle = document.getElementById('sheetViewerTitle');
 const sheetViewerContent = document.getElementById('sheetViewerContent');
 const sheetBack = document.getElementById('sheetBack');
+
+// NYE elementer til lodtrækning
+const lotteryPickerOverlay = document.getElementById('lotteryPickerOverlay');
+const lotteryPickerList = document.getElementById('lotteryPickerList');
+const lotteryPickerClose = document.getElementById('lotteryPickerClose');
+const lotteryPickerConfirm = document.getElementById('lotteryPickerConfirm');
+const lotteryResultOverlay = document.getElementById('lotteryResultOverlay');
+const lotteryResultContent = document.getElementById('lotteryResultContent');
+const lotteryResultClose = document.getElementById('lotteryResultClose');
+let lotteryPickerSelected = new Set();
+
 
 // Udled unikke faner fra Spiller-arket
 function getAvailableTabsFromPlayers() {
@@ -96,7 +104,8 @@ function getAvailableTabsFromPlayers() {
 
 // ------------------------------- Utils --------------------------------
 function uid(){ return 'p-' + Math.random().toString(36).slice(2, 9); }
-function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+function clamp(n, min, max){ return Math.max(min, Math.min(max, n));
+}
 function normalizeKey(s){ return (s ?? '').toString().trim().toLowerCase(); }
 function slugify(s) {
   return (s ?? '').toString()
@@ -108,7 +117,8 @@ function slugify(s) {
 }
 function hashString(str) {
   let h = 0x811c9dc5 >>> 0;
-  for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h,0x01000193); }
+  for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h,0x01000193);
+}
   return (h>>>0).toString(16);
 }
 
@@ -123,13 +133,16 @@ function parseGViz(text) {
   for (; i < text.length; i++){
     const ch = text[i];
     if (inStr) {
-      if (esc) { esc = false; continue; }
-      if (ch === '\\') { esc = true; continue; }
+      if (esc) { esc = false; continue;
+}
+      if (ch === '\\') { esc = true; continue;
+}
       if (ch === '"') inStr = false;
     } else {
       if (ch === '"') inStr = true;
       else if (ch === '{') depth++;
-      else if (ch === '}') { depth--; if (depth === 0) { i++; break; } }
+      else if (ch === '}') { depth--; if (depth === 0) { i++; break;
+} }
     }
   }
   if (depth !== 0) throw new Error('Ugyldigt gviz-svar (ubalanserede {})');
@@ -162,23 +175,21 @@ async function fetchSheetPlayersFromNetwork(){
     ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
     : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
   const url = `${where}&range=A:B&headers=1`;
-
   const resp = await fetch(url, { cache: 'no-store' });
   if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
   const text = await resp.text();
 
   const json = parseGViz(text);
   if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
-
   const label = s => (s ?? '').toString().trim().replace(/:$/, '').toLowerCase();
   const cols = (json.table.cols ?? []).map(c => label(c.label));
   let idxNavn = cols.indexOf('navn');
   let idxFane = cols.indexOf('fane navn');
   const rows = json.table.rows ?? [];
-
   if (idxNavn === -1 || idxFane === -1) {
     let headerRow = null;
-    for (const r of rows) { const a=label(r.c?.[0]?.v), b=label(r.c?.[1]?.v); if (a && b) { headerRow = r; break; } }
+    for (const r of rows) { const a=label(r.c?.[0]?.v), b=label(r.c?.[1]?.v); if (a && b) { headerRow = r; break;
+} }
     if (headerRow) {
       const a=label(headerRow.c?.[0]?.v), b=label(headerRow.c?.[1]?.v);
       if (a==='navn') idxNavn=0;
@@ -186,13 +197,13 @@ async function fetchSheetPlayersFromNetwork(){
     }
   }
   if (idxNavn === -1) throw new Error('Kolonnen "Navn" blev ikke fundet.');
-
   const result = [];
   let started = false;
   for (const r of rows) {
     if (!started) {
       const a=label(r.c?.[0]?.v), b=label(r.c?.[1]?.v);
-      if (a==='navn' && b==='fane navn') { started = true; continue; }
+      if (a==='navn' && b==='fane navn') { started = true; continue;
+}
     }
     const c = r.c ?? [];
     const navn = (c[idxNavn]?.v ?? '').toString().trim();
@@ -230,14 +241,11 @@ async function fetchSheetTabAsTable(tabName){
 
   const json = parseGViz(text);
   if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
-
   const cols = (json.table.cols ?? []);
   const rows = (json.table.rows ?? []);
   const out = [];
-
   // Header-række (labels)
   if (cols.length) out.push(cols.map(c => (c?.label ?? '').toString()));
-
   // Data-rækker
   for (const r of rows) {
     const c = r.c ?? [];
@@ -260,7 +268,6 @@ function openSheetViewer(tabName) {
   sheetViewerTitle.textContent = tabName;
   sheetViewerContent.innerHTML = '<div class="sheet-empty">Indlæser…</div>';
   sheetViewer.classList.remove('hidden');
-
   if (!navigator.onLine) {
     sheetViewerContent.innerHTML = `
       <div class="sheet-offline">
@@ -305,15 +312,12 @@ function renderArrayAsHtmlTable(arr, opts = {}) {
   const cls = 'sheet-table'
     + (stickyFirstCol ? ' sticky-first-col' : '')
     + (stickyTopRows ? ' sticky-top-rows' : '');
-
   const theadHtml = header
     ? `<thead><tr>${header.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>`
     : '';
-
   const tbodyHtml = bodyRows.length
     ? `<tbody>${bodyRows.map(r => `<tr>${r.map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('')}</tbody>`
     : '';
-
   return `<table class="${cls}">${theadHtml}${tbodyHtml}</table>`;
 }
 
@@ -370,7 +374,6 @@ async function fetchFinesFromNetwork(){
   const isName  = x => ['bøde','bode','fine','name'].includes(x);
   const isValue = x => ['værdi','vaerdi','value','beløb','beloeb'].includes(x);
   const isType  = x => ['type','kategori'].includes(x);
-
   const cols = (json.table.cols ?? []).map(c => label(c.label));
   let idxName = cols.findIndex(isName),
       idxValue = cols.findIndex(isValue),
@@ -381,7 +384,8 @@ async function fetchFinesFromNetwork(){
     let headerRow = null;
     for (const r of rows) {
       const a = label(r.c?.[0]?.v), b = label(r.c?.[1]?.v), c = label(r.c?.[2]?.v);
-      if (a && b && c) { headerRow = r; break; }
+      if (a && b && c) { headerRow = r; break;
+}
     }
     if (headerRow) {
       const a = label(headerRow.c?.[0]?.v), b = label(headerRow.c?.[1]?.v), c = label(headerRow.c?.[2]?.v);
@@ -400,14 +404,14 @@ async function fetchFinesFromNetwork(){
   for (const r of rows) {
     if (!started) {
       const a = label(r.c?.[0]?.v), b = label(r.c?.[1]?.v), c = label(r.c?.[2]?.v);
-      if (isName(a) && isValue(b) && isType(c)) { started = true; continue; }
+      if (isName(a) && isValue(b) && isType(c)) { started = true; continue;
+}
     }
     const c = r.c ?? [];
     const name = (c[idxName]?.v ?? '').toString().trim();
     if (!name) continue;
     const value = Number((c[idxValue]?.v ?? 0)) || 0;
     let type = (c[idxType]?.v ?? '').toString().trim().toLowerCase();
-
     const item = { id: slugify(name), name, value, type: (type === 'derived-check' ? 'derived-check' : (type === 'check' ? 'check' : 'count')) };
     if (slugify(name) === 'alle-green-misset') { item.type = 'derived-check'; item.source = slugify('Misset Green'); }
     list.push(item);
@@ -471,7 +475,8 @@ function loadPlayers() {
     });
     if (migrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
     return parsed;
-  } catch { return []; }
+  } catch { return [];
+}
 }
 function savePlayers(players){ localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
 function migratePlayersForFines(){
@@ -487,7 +492,9 @@ function migratePlayersForFines(){
 
 // ---------------- Forretningslogik ----------------
 function getFineValue(id){ return Number(FINE_MAP[id]?.value ?? 0); }
-function createEmptyRows(){ const rows = {}; for (const fine of FINES) rows[fine.id] = fine.type === 'count' ? 0 : false; return rows; }
+function createEmptyRows(){ const rows = {};
+  for (const fine of FINES) rows[fine.id] = fine.type === 'count' ? 0 : false; return rows;
+}
 function hasDuplicate(displayName, meta){
   const key = normalizeKey(displayName);
   if (players.some(p => normalizeKey(p.name) === key)) return true;
@@ -500,13 +507,17 @@ function hasDuplicate(displayName, meta){
 function addPlayer(displayName, meta = null){
   if (!displayName || !displayName.trim()) return;
   if (players.length >= MAX_PLAYERS) { alert(`Du kan højst tilføje ${MAX_PLAYERS} spillere.`); return; }
-  if (hasDuplicate(displayName, meta)) { return; }
-  if (!FINES.length) { alert('Bøder indlæses første gang. Prøv igen om et øjeblik (eller gå online).'); return; }
+  if (hasDuplicate(displayName, meta)) { return;
+}
+  if (!FINES.length) { alert('Bøder indlæses første gang. Prøv igen om et øjeblik (eller gå online).'); return;
+}
   const p = { id: uid(), name: displayName.trim(), rows: createEmptyRows(), meta: meta ?? undefined };
-  players.push(p); activePlayerId = p.id; savePlayers(players); render();
+  players.push(p);
+  activePlayerId = p.id; savePlayers(players); render();
 }
 function setActivePlayer(playerId){ activePlayerId = playerId; renderTabs(); renderPanels(); }
-function removeAllPlayers(){ players = []; activePlayerId = null; savePlayers(players); render(); }
+function removeAllPlayers(){ players = []; activePlayerId = null;
+savePlayers(players); render(); }
 
 // ---------------- Rendering ----------------
 function render(){
@@ -540,10 +551,13 @@ function buildTableForPlayer(p){
     if (fine.type === 'count') {
       const wrap = document.createElement('div'); wrap.className = 'counter';
       const minus = document.createElement('button'); minus.className = 'iconbtn minus'; minus.textContent = '−';
-      const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1'; input.className = 'num'; input.value = p.rows[fine.id] ?? 0;
+      const input = document.createElement('input');
+      // RETTET LINJE:
+      input.type = 'number'; input.min = '0'; input.step = '1'; input.className = 'num'; input.value = p.rows[fine.id] ?? 0;
       const plus = document.createElement('button'); plus.className = 'iconbtn plus'; plus.textContent = '+';
       wrap.append(minus, input, plus);
-      minus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)-1, 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
+      minus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)-1, 0, 9999);
+p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       plus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)+1, 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       input.addEventListener('change', () => { input.value = clamp(parseInt(input.value ?? '0',10), 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       tdCount.appendChild(wrap);
@@ -553,10 +567,10 @@ function buildTableForPlayer(p){
       tdCount.appendChild(cb);
     }
 
-    const amtInput = document.createElement('input'); amtInput.type = 'text'; amtInput.className = 'amount-field'; amtInput.readOnly = true; amtInput.value = '0'; amtInput.dataset.fineId = fine.id;
+    const amtInput = document.createElement('input');
+    amtInput.type = 'text'; amtInput.className = 'amount-field'; amtInput.readOnly = true; amtInput.value = '0'; amtInput.dataset.fineId = fine.id;
     tdAmt.appendChild(amtInput);
     tr.append(tdLabel, tdCount, tdAmt); tbody.appendChild(tr);
-
     if (!sectionBreakInserted && fine.id === 'hole-in-one') {
       const gap = document.createElement('tr');
       gap.innerHTML = `<td class="section-gap"></td><td class="section-gap"></td><td class="section-gap"></td>`;
@@ -570,7 +584,8 @@ function buildTableForPlayer(p){
   const tdLbl = document.createElement('td'); tdLbl.textContent = 'At betale:'; tdLbl.className = 'row-label';
   const tdEmpty = document.createElement('td');
   const tdTot = document.createElement('td');
-  const totalInput = document.createElement('input'); totalInput.type = 'text'; totalInput.readOnly = true; totalInput.className = 'amount-field total-field'; totalInput.value = '0'; totalInput.id = 'total-for-' + p.id;
+  const totalInput = document.createElement('input'); totalInput.type = 'text'; totalInput.readOnly = true; totalInput.className = 'amount-field total-field';
+  totalInput.value = '0'; totalInput.id = 'total-for-' + p.id;
   tdTot.appendChild(totalInput);
   trTot.append(tdLbl, tdEmpty, tdTot); tfoot.appendChild(trTot);
 
@@ -588,8 +603,10 @@ function renderPanels(){
 }
 function calcAmount(player, fine){
   if (!fine) return 0;
-  if (fine.type === 'count') { const n = Number(player.rows[fine.id] ?? 0); const v = getFineValue(fine.id); return n * v; }
-  if (fine.type === 'check') { const v = getFineValue(fine.id); return player.rows[fine.id] ? v : 0; }
+  if (fine.type === 'count') { const n = Number(player.rows[fine.id] ?? 0);
+  const v = getFineValue(fine.id); return n * v; }
+  if (fine.type === 'check') { const v = getFineValue(fine.id);
+  return player.rows[fine.id] ? v : 0; }
   if (fine.type === 'derived-check') {
     if (!player.rows[fine.id]) return 0;
     const src = FINE_MAP[fine.source];
@@ -640,7 +657,8 @@ async function sendRoundData(payload){
   });
   const text = await resp.text();
   let data;
-  try { data = JSON.parse(text); }
+  try { data = JSON.parse(text);
+}
   catch { throw new Error('Ugyldigt svar fra serveren (ikke JSON)'); }
   if (!resp.ok) throw new Error(`Serverfejl: ${resp.status}`);
   if (!data || data.status !== 'ok') throw new Error(data?.message || 'Server svarede uden status ok');
@@ -648,7 +666,8 @@ async function sendRoundData(payload){
 }
 function queuePush(item){
   if (!ENABLE_OFFLINE_QUEUE) return;
-  try { const q = JSON.parse(localStorage.getItem(ROUND_QUEUE_KEY) || '[]'); q.push(item); localStorage.setItem(ROUND_QUEUE_KEY, JSON.stringify(q)); } catch {}
+  try { const q = JSON.parse(localStorage.getItem(ROUND_QUEUE_KEY) || '[]'); q.push(item); localStorage.setItem(ROUND_QUEUE_KEY, JSON.stringify(q));
+} catch {}
 }
 function queueDrain(){
   if (!ENABLE_OFFLINE_QUEUE) return;
@@ -674,7 +693,8 @@ async function finishRoundFlow(courseName){
   const errors = [];
   for (const p of players) {
     const payload = buildPayloadForPlayer(p, courseName);
-    if (!navigator.onLine && ENABLE_OFFLINE_QUEUE) { queuePush(payload); continue; }
+    if (!navigator.onLine && ENABLE_OFFLINE_QUEUE) { queuePush(payload);
+continue; }
     try { await sendRoundData(payload); }
     catch (err) {
       console.error('Send fejl for', p.name, err);
@@ -682,7 +702,8 @@ async function finishRoundFlow(courseName){
       if (ENABLE_OFFLINE_QUEUE) queuePush(payload);
     }
   }
-  if (errors.length === 0) { showToast('Runde afsluttet'); }
+  if (errors.length === 0) { showToast('Runde afsluttet');
+}
   else { showToast('Nogle indsendelser blev køet til senere'); }
   if (AUTO_RESET_AFTER_SEND) fullResetLikeButton();
 }
@@ -696,13 +717,15 @@ function openPicker(){
   updatePickerConfirm();
 
   const cached = loadSheetCache();
-  if (cached.list && cached.list.length){ sheetPlayers = cached.list; sheetLoaded = true; renderPickerList(false); }
+  if (cached.list && cached.list.length){ sheetPlayers = cached.list; sheetLoaded = true; renderPickerList(false);
+}
   else { renderPickerList(true); }
 
   ensureFinesLoaded(0).then(()=>{});
   refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(()=> renderPickerList(false)).catch(()=> renderPickerList(false));
 }
-function closePicker(){ pickerOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); pickerSelected = new Set(); }
+function closePicker(){ pickerOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); pickerSelected = new Set();
+}
 function updatePickerConfirm(){
   const count = pickerSelected.size;
   pickerConfirm.textContent = count>0 ? `OK (${count})` : 'OK';
@@ -710,22 +733,26 @@ function updatePickerConfirm(){
 }
 function renderPickerList(isLoading = false){
   pickerList.innerHTML = '';
-  if (isLoading) { pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Indlæser spillere…</span></div>`; return; }
-  if (sheetLoadError) { pickerList.innerHTML = `<div class=\"picker-item\"><span class=\"primary-label\">Kunne ikke hente fra arket: ${sheetLoadError.message}</span></div>`; return; }
+  if (isLoading) { pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Indlæser spillere…</span></div>`; return;
+}
+  if (sheetLoadError) { pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Kunne ikke hente fra arket: ${sheetLoadError.message}</span></div>`; return;
+}
 
   const { meta } = loadSheetCache();
   if (meta.updatedAt){
-    const info = document.createElement('div'); info.className = 'picker-item'; info.style.opacity = '0.7';
+    const info = document.createElement('div'); info.className = 'picker-item';
+    info.style.opacity = '0.7';
     const ts = new Date(meta.updatedAt).toLocaleString('da-DK');
-    info.innerHTML = `<span class=\"primary-label\">Sidst opdateret: ${ts}</span>`;
+    info.innerHTML = `<span class="primary-label">Sidst opdateret: ${ts}</span>`;
     pickerList.appendChild(info);
   }
 
   const items = sheetPlayers;
   if (items.length === 0){
     const hasCache = (loadSheetCache().list ?? []).length > 0;
-    const msg = (!hasCache && !navigator.onLine) ? 'Ingen cache tilgængelig – gå online første gang for at hente spillerlisten.' : 'Ingen matches';
-    pickerList.innerHTML = `<div class=\"picker-item\"><span class=\"primary-label\">${msg}</span></div>`;
+    const msg = (!hasCache && !navigator.onLine) ? 'Ingen cache tilgængelig – gå online første gang for at hente spillerlisten.'
+: 'Ingen matches';
+    pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">${msg}</span></div>`;
     return;
   }
 
@@ -733,7 +760,6 @@ function renderPickerList(isLoading = false){
     ...players.map(p => (p.name ?? '').toLowerCase()),
     ...players.map(p => ((p.meta?.navn) ?? '').toLowerCase()),
   ]);
-
   const frag = document.createDocumentFragment();
   items.forEach(item => {
     const row = document.createElement('div'); row.className = 'picker-item'; row.setAttribute('role', 'option');
@@ -754,7 +780,8 @@ function renderPickerList(isLoading = false){
     function toggle(){
       if (exists) return;
       const selectedAlready = pickerSelected.has(key);
-      if (!selectedAlready && pickerSelected.size >= remainingSlots()) { return; }
+      if (!selectedAlready && pickerSelected.size >= remainingSlots()) { return;
+}
       if (selectedAlready) pickerSelected.delete(key); else pickerSelected.add(key);
       cb.checked = pickerSelected.has(key);
       updatePickerConfirm();
@@ -795,10 +822,10 @@ pickerConfirm.addEventListener('click', async () => {
 function openMenu() {
   document.body.classList.add('modal-open');
   menuOverlay.classList.remove('hidden');
-
   // 1) Brug cache straks
   const cached = loadSheetCache();
-  if (cached.list && cached.list.length) { sheetPlayers = cached.list; sheetLoaded = true; }
+  if (cached.list && cached.list.length) { sheetPlayers = cached.list;
+  sheetLoaded = true; }
   renderMenuList();
 
   // 2) Forsøg frisk netværks-hentning – tegn igen uanset hash
@@ -815,26 +842,191 @@ function closeMenu() {
 }
 function renderMenuList() {
   const tabs = getAvailableTabsFromPlayers();
+  menuList.innerHTML = ''; // Nulstil listen
+
+  // Overskrift for bødekort
+  const headingFines = document.createElement('div');
+  headingFines.className = 'menu-heading';
+  headingFines.textContent = 'Bøde Kort:';
+  menuList.appendChild(headingFines);
+
   if (!tabs.length) {
-    menuList.innerHTML = `<div class="menu-item"><span class="name">Ingen faner fundet</span></div>`;
-    return;
+    const item = document.createElement('div');
+    item.className = 'menu-item';
+    item.innerHTML = `<span class="name">Ingen faner fundet</span>`;
+    menuList.appendChild(item);
+  } else {
+    const frag = document.createDocumentFragment();
+    tabs.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'menu-item';
+      const left = document.createElement('div');
+      left.className = 'name';
+      left.textContent = name;
+      row.append(left);
+      row.addEventListener('click', () => { closeMenu(); openSheetViewer(name); });
+      frag.appendChild(row);
+    });
+    menuList.appendChild(frag);
   }
-  const frag = document.createDocumentFragment();
-  tabs.forEach(name => {
-    const row = document.createElement('div');
-    row.className = 'menu-item';
-    const left = document.createElement('div');
-    left.className = 'name';
-    left.textContent = name;
-    row.append(left);
-    row.addEventListener('click', () => { closeMenu(); openSheetViewer(name); });
-    frag.appendChild(row);
+
+  // Overskrift for lodtrækning
+  const headingLottery = document.createElement('div');
+  headingLottery.className = 'menu-heading';
+  headingLottery.textContent = 'Lodtrækning:';
+  menuList.appendChild(headingLottery);
+
+  // Menupunkt for lodtrækning
+  const lotteryItem = document.createElement('div');
+  lotteryItem.className = 'menu-item';
+  lotteryItem.innerHTML = '<div class="name">Vælg spiller</div>';
+  lotteryItem.addEventListener('click', () => {
+    closeMenu();
+    openLotteryPicker();
   });
-  menuList.innerHTML = '';
-  menuList.appendChild(frag);
+  menuList.appendChild(lotteryItem);
 }
 
-// Events
+
+// ---------------- Lodtrækning: Picker, logik og resultat ----------------
+
+function openLotteryPicker() {
+  document.body.classList.add('modal-open');
+  lotteryPickerOverlay.classList.remove('hidden');
+  lotteryPickerSelected = new Set();
+  updateLotteryPickerConfirm();
+
+  const cached = loadSheetCache();
+  if (cached.list && cached.list.length){
+    sheetPlayers = cached.list;
+    sheetLoaded = true;
+    renderLotteryPickerList(false);
+  } else {
+    renderLotteryPickerList(true);
+  }
+  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
+    .then(()=> renderLotteryPickerList(false))
+    .catch(()=> renderLotteryPickerList(false));
+}
+
+function closeLotteryPicker() {
+  lotteryPickerOverlay.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+  lotteryPickerSelected = new Set();
+}
+
+function updateLotteryPickerConfirm() {
+  const count = lotteryPickerSelected.size;
+  lotteryPickerConfirm.textContent = count > 0 ? `OK (${count})` : 'OK';
+  lotteryPickerConfirm.disabled = (count === 0);
+}
+
+function renderLotteryPickerList(isLoading = false) {
+  lotteryPickerList.innerHTML = '';
+  if (isLoading) {
+    lotteryPickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Indlæser spillere…</span></div>`;
+    return;
+  }
+  if (sheetLoadError) {
+    lotteryPickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Kunne ikke hente fra arket: ${sheetLoadError.message}</span></div>`;
+    return;
+  }
+
+  const items = sheetPlayers;
+  if (items.length === 0){
+    const hasCache = (loadSheetCache().list ?? []).length > 0;
+    const msg = (!hasCache && !navigator.onLine) ? 'Ingen cache tilgængelig – gå online første gang for at hente spillerlisten.' : 'Ingen spillere fundet';
+    lotteryPickerList.innerHTML = `<div class="picker-item"><span class="primary-label">${msg}</span></div>`;
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  items.forEach(item => {
+    const key = item.navn; // Brug unikt spillernavn som nøgle
+    if (!key) return;
+
+    const row = document.createElement('div');
+    row.className = 'picker-item';
+    row.setAttribute('role', 'option');
+
+    const left = document.createElement('div');
+    const primary = document.createElement('div');
+    primary.className = 'primary-label';
+    primary.textContent = item.navn;
+    left.append(primary);
+
+    const right = document.createElement('div');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'selbox';
+    cb.checked = lotteryPickerSelected.has(key);
+
+    function toggle() {
+      if (lotteryPickerSelected.has(key)) {
+        lotteryPickerSelected.delete(key);
+      } else {
+        lotteryPickerSelected.add(key);
+      }
+      cb.checked = lotteryPickerSelected.has(key);
+      updateLotteryPickerConfirm();
+    }
+
+    row.addEventListener('click', (e) => { if (e.target !== cb) toggle(); });
+    cb.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+
+    right.appendChild(cb);
+    row.append(left, right);
+    frag.appendChild(row);
+  });
+  lotteryPickerList.appendChild(frag);
+}
+
+function runLottery() {
+  const selectedPlayers = Array.from(lotteryPickerSelected);
+  if (selectedPlayers.length === 0) return;
+
+  // 1. Bland spillere (Fisher-Yates shuffle)
+  for (let i = selectedPlayers.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [selectedPlayers[i], selectedPlayers[j]] = [selectedPlayers[j], selectedPlayers[i]];
+  }
+
+  // 2. Bestem antal grupper
+  const numPlayers = selectedPlayers.length;
+  const numGroups = numPlayers >= 9 ? 3 : 2;
+
+  // 3. Fordel spillere i grupper
+  const groups = Array.from({ length: numGroups }, () => []);
+  for (let i = 0; i < numPlayers; i++) {
+    groups[i % numGroups].push(selectedPlayers[i]);
+  }
+
+  // 4. Vis resultat
+  showLotteryResult(groups);
+}
+
+function showLotteryResult(groups) {
+  let html = '';
+  groups.forEach((players, index) => {
+    html += `<h4>Gruppe ${index + 1}</h4>`;
+    html += '<ul>';
+    players.forEach(player => {
+      html += `<li>${escapeHtml(player)}</li>`;
+    });
+    html += '</ul>';
+  });
+
+  lotteryResultContent.innerHTML = html;
+  document.body.classList.add('modal-open');
+  lotteryResultOverlay.classList.remove('hidden');
+}
+
+function closeLotteryResult() {
+    lotteryResultOverlay.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+}
+
+// ---------------- Events ----------------
 if (menuBtn) menuBtn.addEventListener('click', openMenu);
 if (menuClose) menuClose.addEventListener('click', closeMenu);
 if (menuOverlay) menuOverlay.addEventListener('click', (e) => {
@@ -848,12 +1040,15 @@ pickerOverlay.addEventListener('click', (e) => { if (e.target === pickerOverlay)
 resetBtn.addEventListener('click', () => { document.body.classList.add('modal-open'); overlay.classList.remove('hidden'); });
 confirmNo.addEventListener('click', () => { overlay.classList.add('hidden'); document.body.classList.remove('modal-open'); });
 confirmYes.addEventListener('click', () => { overlay.classList.add('hidden'); document.body.classList.remove('modal-open'); localStorage.removeItem(STORAGE_KEY); removeAllPlayers(); });
-
 // Afslut runde dialogs
-if (endRoundBtn) { endRoundBtn.addEventListener('click', () => { document.body.classList.add('modal-open'); endRoundOverlay.classList.remove('hidden'); }); }
-if (endRoundConfirmNo) { endRoundConfirmNo.addEventListener('click', () => { endRoundOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); }); }
-if (endRoundConfirmYes) { endRoundConfirmYes.addEventListener('click', () => { endRoundOverlay.classList.add('hidden'); courseNameInput.value = ''; courseNameOverlay.classList.remove('hidden'); }); }
-if (courseNameCancel) { courseNameCancel.addEventListener('click', () => { courseNameOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); }); }
+if (endRoundBtn) { endRoundBtn.addEventListener('click', () => { document.body.classList.add('modal-open'); endRoundOverlay.classList.remove('hidden'); });
+}
+if (endRoundConfirmNo) { endRoundConfirmNo.addEventListener('click', () => { endRoundOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); });
+}
+if (endRoundConfirmYes) { endRoundConfirmYes.addEventListener('click', () => { endRoundOverlay.classList.add('hidden'); courseNameInput.value = ''; courseNameOverlay.classList.remove('hidden'); });
+}
+if (courseNameCancel) { courseNameCancel.addEventListener('click', () => { courseNameOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); });
+}
 if (courseNameOk) {
   courseNameOk.addEventListener('click', async () => {
     const name = (courseNameInput.value || '').trim();
@@ -863,19 +1058,32 @@ if (courseNameOk) {
   });
 }
 
+// NYE event listeners til lodtrækning
+if (lotteryPickerClose) lotteryPickerClose.addEventListener('click', closeLotteryPicker);
+if (lotteryPickerOverlay) lotteryPickerOverlay.addEventListener('click', (e) => { if (e.target === lotteryPickerOverlay) closeLotteryPicker(); });
+if (lotteryPickerConfirm) {
+  lotteryPickerConfirm.addEventListener('click', () => {
+    runLottery();
+    closeLotteryPicker();
+  });
+}
+if (lotteryResultClose) lotteryResultClose.addEventListener('click', closeLotteryResult);
+if (lotteryResultOverlay) lotteryResultOverlay.addEventListener('click', (e) => { if (e.target === lotteryResultOverlay) closeLotteryResult(); });
+
+
 // ---------------- Toast ----------------
 let toastTimer = null;
 function showToast(msg) {
   let t = document.getElementById('fgl-toast');
   if (!t) { t = document.createElement('div'); t.id = 'fgl-toast'; t.className = 'toast'; document.body.appendChild(t); }
   t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
 }
 
 // ---------------- Init ----------------
 if (players.length > 0) { activePlayerId = players[0].id; }
 render();
-
 ensureFinesLoaded(MIN_REFRESH_INTERVAL_MS).then(() => { if (players.length) renderPanels(); });
 
 window.addEventListener('online', () => {
@@ -888,7 +1096,6 @@ window.addEventListener('online', () => {
   });
   queueDrain();
 });
-
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
     if (event.data?.type === 'NEW_VERSION') {

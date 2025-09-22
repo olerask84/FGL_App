@@ -24,9 +24,8 @@
     <main id="tabPanels" class="tab-panels"></main>
   </div>
 
-  <!-- Nulstil-dialog -->
-  <div id="confirmOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
-    <div class="dialog" role="document">
+  <div id="confirmOverlay" class="overlay hidden">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
       <h3 id="confirmTitle">Nulstil app?</h3>
       <p>Er du sikker på, at du vil nulstille app’en?</p>
       <div class="actions">
@@ -36,9 +35,8 @@
     </div>
   </div>
 
-  <!-- Spiller-vælger -->
-  <div id="pickerOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
-    <div class="dialog" role="document">
+  <div id="pickerOverlay" class="overlay hidden">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
       <h3 id="pickerTitle">Vælg spillere</h3>
       <div id="pickerList" class="picker-list" role="listbox" aria-label="Spillerliste"></div>
       <div class="actions">
@@ -48,9 +46,8 @@
     </div>
   </div>
 
-  <!-- Afslut runde: bekræft -->
-  <div id="endRoundOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="endRoundTitle">
-    <div class="dialog" role="document">
+  <div id="endRoundOverlay" class="overlay hidden">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="endRoundTitle">
       <h3 id="endRoundTitle">Afslut runde?</h3>
       <p id="endRoundMessage">Vil du afslutte runden og indsende data?</p>
       <div class="actions">
@@ -60,10 +57,10 @@
     </div>
   </div>
 
-  <!-- Afslut runde: indtast bane -->
-  <div id="courseNameOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="courseNameTitle">
-    <div class="dialog" role="document">
+  <div id="courseNameOverlay" class="overlay hidden">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="courseNameTitle">
       <h3 id="courseNameTitle">Indtast bane</h3>
+      <label for="courseNameInput" class="visually-hidden">Bane-navn</label>
       <input type="text" id="courseNameInput" placeholder="Bane-navn..." />
       <div class="actions">
         <button id="courseNameOk" class="btn primary">OK</button>
@@ -72,9 +69,8 @@
     </div>
   </div>
   
-  <!-- Menu-Overlay: viser liste over faner (ekskl. Noter & Spiller) -->
-  <div id="menuOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
-    <div class="dialog" role="document">
+  <div id="menuOverlay" class="overlay hidden">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
       <div class="menu-head">
         <h3 id="menuTitle">Menu</h3>
         <button id="menuClose" class="btn">Luk</button>
@@ -83,14 +79,33 @@
     </div>
   </div>
 
-  <!-- Viewer-side: fuldskærm, brand-farvet baggrund, tilbagepil -->
   <div id="sheetViewer" class="sheet-viewer hidden" aria-live="polite">
     <div class="sheet-viewer-header">
       <button id="sheetBack" class="back-btn" aria-label="Tilbage">←</button>
       <h3 id="sheetViewerTitle" class="sheet-viewer-title"></h3>
     </div>
     <div id="sheetViewerContent" class="sheet-viewer-content">
-      <!-- Indhold (tabel) injiceres via JS -->
+      </div>
+  </div>
+
+  <div id="lotteryPickerOverlay" class="overlay hidden">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="lotteryPickerTitle">
+      <h3 id="lotteryPickerTitle">Vælg spillere til lodtrækning</h3>
+      <div id="lotteryPickerList" class="picker-list" role="listbox" aria-label="Spillerliste til lodtrækning"></div>
+      <div class="actions">
+        <button id="lotteryPickerConfirm" class="btn primary" disabled>OK</button>
+        <button id="lotteryPickerClose" class="btn">Annuller</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="lotteryResultOverlay" class="overlay hidden">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="lotteryResultTitle">
+      <h3 id="lotteryResultTitle">Resultat af lodtrækning</h3>
+      <div id="lotteryResultContent" class="lottery-result-content"></div>
+      <div class="actions">
+        <button id="lotteryResultClose" class="btn primary">OK</button>
+      </div>
     </div>
   </div>
 
@@ -100,8 +115,6 @@
       window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js'));
     }
   </script>
-
-
 
 </body>
 </html>
