@@ -890,7 +890,7 @@ function renderMenuList() {
 
 // ---------------- Lodtrækning: Picker, logik og resultat ----------------
 
-function openLotteryPicker() {
+/*function openLotteryPicker() {
   document.body.classList.add('modal-open');
   lotteryPickerOverlay.classList.remove('hidden');
   lotteryPickerSelected = new Set();
@@ -907,7 +907,38 @@ function openLotteryPicker() {
   refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
     .then(()=> renderLotteryPickerList(false))
     .catch(()=> renderLotteryPickerList(false));
+}*/
+
+function openLotteryPicker() {
+  document.body.classList.add('modal-open');
+  lotteryPickerOverlay.classList.remove('hidden');
+
+  const cached = loadSheetCache();
+  if (cached.list && cached.list.length){
+    sheetPlayers = cached.list;
+    sheetLoaded = true;
+
+    //  Vælg spillere her – fx alle spillere
+    lotteryPickerSelected = new Set(sheetPlayers.map(p => p.navn));
+
+    updateLotteryPickerConfirm();
+    renderLotteryPickerList(false);
+  } else {
+    lotteryPickerSelected = new Set(); // Tom hvis ingen cache
+    updateLotteryPickerConfirm();
+    renderLotteryPickerList(true);
+  }
+
+  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
+    .then(() => {
+      // Vælg spillere igen efter opdatering
+      lotteryPickerSelected = new Set(sheetPlayers.map(p => p.navn));
+      updateLotteryPickerConfirm();
+      renderLotteryPickerList(false);
+    })
+    .catch(() => renderLotteryPickerList(false));
 }
+
 
 function closeLotteryPicker() {
   lotteryPickerOverlay.classList.add('hidden');
