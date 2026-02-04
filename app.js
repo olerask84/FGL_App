@@ -412,7 +412,18 @@ async function fetchFinesFromNetwork(){
     if (!name) continue;
     const value = Number((c[idxValue]?.v ?? 0)) || 0;
     let type = (c[idxType]?.v ?? '').toString().trim().toLowerCase();
-    const item = { id: slugify(name), name, value, type: (type === 'derived-check' ? 'derived-check' : (type === 'check' ? 'check' : 'count')) };
+
+    //const item = { id: slugify(name), name, value, type: (type === 'derived-check' ? 'derived-check' : (type === 'check' ? 'check' : 'count')) };
+    
+    const t = (type || '').toLowerCase();
+    const item = {
+      id: slugify(name),
+      name,
+      value,
+      // NYT: støt 'one' som egen type, ellers eksisterende mapping
+      type: (t === 'one') ? 'one' : (t === 'derived-check' ? 'derived-check' : (t === 'check' ? 'check' : 'count'))
+    };
+
     if (slugify(name) === 'alle-green-misset') { item.type = 'derived-check'; item.source = slugify('Misset Green'); }
     list.push(item);
   }
@@ -483,18 +494,41 @@ function migratePlayersForFines(){
   let migrated = false;
   players.forEach(p => {
     if (!p.rows) p.rows = {};
+
+    //FINES.forEach(f => {
+      //if (p.rows[f.id] === undefined) { p.rows[f.id] = (f.type === 'count' ? 0 : false); migrated = true; }
+    //});
+  //});
+
     FINES.forEach(f => {
-      if (p.rows[f.id] === undefined) { p.rows[f.id] = (f.type === 'count' ? 0 : false); migrated = true; }
+      if (f.type === 'one') return; // NYT: ingen state for one
+      if (p.rows[f.id] === undefined) {
+        p.rows[f.id] = (f.type === 'count' ? 0 : false);
+        migrated = true;
+      }
     });
-  });
+
   if (migrated) savePlayers(players);
 }
+)}
 
 // ---------------- Forretningslogik ----------------
 function getFineValue(id){ return Number(FINE_MAP[id]?.value ?? 0); }
-function createEmptyRows(){ const rows = {};
-  for (const fine of FINES) rows[fine.id] = fine.type === 'count' ? 0 : false; return rows;
+
+function createEmptyRows() {
+  const rows = {};
+  for (const fine of FINES) {
+    if (fine.type === 'one') continue; // NYT: ingen state for one
+    rows[fine.id] = fine.type === 'count' ? 0 : false;
+  }
+  return rows;
 }
+
+
+//function createEmptyRows(){ const rows = {};
+  //for (const fine of FINES) rows[fine.id] = fine.type === 'count' ? 0 : false; return rows;
+//}
+
 function hasDuplicate(displayName, meta){
   const key = normalizeKey(displayName);
   if (players.some(p => normalizeKey(p.name) === key)) return true;
@@ -547,8 +581,12 @@ function buildTableForPlayer(p){
     const tdLabel = document.createElement('td'); tdLabel.className = 'row-label'; tdLabel.textContent = fine.name;
     const tdCount = document.createElement('td'); tdCount.className = 'count';
     const tdAmt = document.createElement('td'); tdAmt.className = 'amount';
+    
+    if (fine.type === 'one') {
+      // PASSIV række: ingen kontrol i tdCount
+      tdCount.textContent = '-';
 
-    if (fine.type === 'count') {
+    } else if (fine.type === 'count') {
       const wrap = document.createElement('div'); wrap.className = 'counter';
       const minus = document.createElement('button'); minus.className = 'iconbtn minus'; minus.textContent = '−';
       const input = document.createElement('input');
@@ -612,6 +650,11 @@ function calcAmount(player, fine){
     const src = FINE_MAP[fine.source];
     return calcAmount(player, src);
   }
+  
+  if (fine.type === 'one') {
+    if (player.rows['afbud']) return 0;
+    return getFineValue(fine.id);
+  }
   return 0;
 }
 function updateAmounts(table, player){
@@ -631,10 +674,25 @@ function updateAmounts(table, player){
 function buildFinesForPlayer(player){
   const finesOut = [];
   for (const fine of FINES) {
-    const val = player.rows[fine.id];
-    const count = (fine.type === 'count') ? Number(val ?? 0) : (val ? 1 : 0);
+    
+    let count;
+    if (fine.type === 'count') {
+      const val = player.rows[fine.id];
+      count = Number(val ?? 0);
+    } else if (fine.type === 'one') {
+      count = player.rows['afbud'] ? 0 : 1;
+    } else {
+      const val = player.rows[fine.id];
+      count = (val ? 1 : 0);
+    }
     const amount = calcAmount(player, fine);
-    finesOut.push({ id: fine.id, name: fine.name, count, amount });
+    finesOut.push({ id: fine.id, name: fine.name, count, amount })
+
+    //const val = player.rows[fine.id];
+    //const count = (fine.type === 'count') ? Number(val ?? 0) : (val ? 1 : 0);
+    //const amount = calcAmount(player, fine);
+    //finesOut.push({ id: fine.id, name: fine.name, count, amount });
+
   }
   return finesOut;
 }
