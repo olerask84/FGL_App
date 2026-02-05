@@ -665,13 +665,15 @@ function renderScoreCard(player) {
     const inp = document.createElement('input');
     inp.type = 'number';
     inp.min = 0;
-    inp.value = Number(player.score?.holes?.[i] ?? 0);
+
+    // Vis intet hvis værdien er 0
+    inp.value = player.score.holes[i] ? player.score.holes[i] : "";
 
     inp.addEventListener('change', () => {
-      if (!player.score) player.score = { holes: Array(18).fill(0), hcp: 0 };
-      player.score.holes[i] = Number(inp.value || 0);
-      savePlayers(players);
-      updateScoreTotals();
+        // Hvis feltet er tomt, gem 0
+        player.score.holes[i] = Number(inp.value || 0);
+        savePlayers(players);
+        updateScoreTotals();
     });
 
     row.append(label, inp);
