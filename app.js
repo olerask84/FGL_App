@@ -726,9 +726,13 @@ function renderScoreCard(player) {
 
     // Android IME action 
     inp.addEventListener("beforeinput", (e) => {
-      if (e.inputType === "insertLineBreak") {
-        e.preventDefault();
-        focusSameHoleOnNextPlayer(player.id, i);
+      if (
+        e.inputType === "insertLineBreak" ||
+        e.inputType === "insertParagraph" ||
+        (e.inputType.startsWith("insert") && e.data === null)
+      ) {
+      e.preventDefault();
+                                                                                                                                                                                         focusSameHoleOnNextPlayer(player.id, i);
       }
     });
 
