@@ -698,7 +698,12 @@ function renderScoreCard(player) {
     label.textContent = `Hul ${i + 1}`;
 
     const inp = document.createElement('input');
-    inp.type = 'number';
+    
+    //inp.type = 'number';
+    inp.type = 'text';
+    inp.inputMode = 'numeric';
+    inp.pattern = '[0-9]*';
+    
     inp.min = 0;
 
     // Vis intet hvis værdien er 0
