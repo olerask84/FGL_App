@@ -1,12 +1,10 @@
 * { box-sizing: border-box; }
 :root { --bg:#f3f6f9; --card:#fff; --ink:#0b1f2a; --muted:#6b7c86; --brand:#0a3d62; --danger:#b00020; --border:#d9e1e8;
 }
-
 html,body{height:100%}
 body{margin:0;font:16px/1.4 system-ui,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
 body::before{content:"";position:fixed;inset:0;background-image:url('assets/icons/FGL_192_VM.png');background-repeat:repeat;background-size:128px 128px;opacity:.08;pointer-events:none;z-index:0}
 #app{position:relative;z-index:1}
-
 .topbar{display:grid;grid-template-columns:auto auto auto;gap:.5rem;padding:.75rem;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
 .btn{appearance:none;-webkit-appearance:none;border:1px solid var(--border);background:#fff;color:var(--ink);padding:.55rem .9rem;border-radius:.5rem;cursor:pointer;font-weight:600}
 .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
@@ -15,40 +13,32 @@ body::before{content:"";position:fixed;inset:0;background-image:url('assets/icon
 .hidden{display:none!important}
 .end-round-btn.btn.primary{ background-color:#4CAF50; border-color:#4CAF50;
 }
-
 .tabs{display:flex;gap:.4rem;padding:.6rem .6rem 0;flex-wrap:nowrap;overflow-x:auto}
 .tab-btn{background:var(--card);border:1px solid var(--border);padding:.4rem .7rem;border-top-left-radius:.5rem;border-top-right-radius:.5rem;cursor:pointer;font-weight:600;color:var(--muted);white-space:nowrap}
 .tab-btn.active{background:#fff;color:var(--ink);border-bottom-color:#fff}
-
 .tab-panels{padding:.6rem}
 .panel{position:relative;background:#fff;border:1px solid var(--border);border-radius:.6rem;padding:.75rem;overflow:hidden}
 .panel::before{content:"";position:absolute;inset:0;background-image:url('assets/icons/FGL_192_VM.png');background-repeat:no-repeat;background-position:center;background-size:min(75vw,520px);opacity:.08;pointer-events:none}
-
 .table{width:100%;border-collapse:collapse;position:relative;z-index:1}
 .table th,.table td{border-bottom:1px solid var(--border);padding:.35rem .4rem}
 .table th{text-align:left;color:var(--muted);font-weight:700}
 .table td.amount{width:6rem}
 .table td.count{width:8.5rem}
 .table tfoot td{font-weight:700}
-
 .counter{display:grid;grid-template-columns:auto 1fr auto;gap:.25rem;align-items:center}
 .counter .num{width:4.5rem;text-align:center;padding:.4rem;border:1px solid var(--border);border-radius:.4rem;background:#f8fafc}
 .counter .iconbtn{background:#e6f0ff;border:1px solid #cfe0ff;color:#084298;border-radius:.4rem;padding:.25rem .5rem;font-weight:800}
 .counter .iconbtn.minus{background:#eaf7ee;border-color:#cfeedd;color:#0e6f3a}
-
 .amount-field{width:100%;text-align:right;padding:.4rem;border:1px solid var(--border);border-radius:.4rem;background:#f8fafc}
 .total-field{width:6.5rem}
 .row-label{font-weight:700}
 .section-gap{height:.5rem}
-
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:1000}
 .dialog{background:#fff;border-radius:.6rem;padding:1rem;width:min(92vw,420px);box-shadow:0 12px 32px rgba(0,0,0,.35);-webkit-box-shadow:0 12px 32px rgba(0,0,0,.35);z-index:1001}
 .dialog .actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem}
 .dialog input[type="text"]{width:100%;padding:.6rem;border:1px solid var(--border);border-radius:.5rem;margin-top:.5rem}
-
 body.modal-open{overflow:hidden}
 @media(min-width:700px){.panel{max-width:720px;margin-inline:auto}}
-
 .picker-list{margin-top:.5rem;max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:.5rem;background:#fff}
 .picker-item{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.55rem .7rem;border-bottom:1px solid var(--border);cursor:pointer}
 .picker-item:last-child{border-bottom:none}
@@ -56,7 +46,6 @@ body.modal-open{overflow:hidden}
 .picker-item .primary-label{font-weight:700}
 .picker-item.disabled{opacity:.6;cursor:not-allowed}
 .selbox{width:1.15rem;height:1.15rem}
-
 body.empty-state .topbar { background: transparent;
  border-bottom: 0; }
 body.empty-state .tabs, body.empty-state .tab-panels, body.empty-state #resetBtn, body.empty-state #endRoundBtn { display: none !important; }
@@ -65,17 +54,14 @@ body.empty-state #addPlayerBtn { position: fixed;
  box-shadow: 0 8px 20px rgba(0, 0, 0, .20); -webkit-box-shadow: 0 8px 20px rgba(0, 0, 0, .20); border-radius: .6rem; }
 @media (hover: none) { body.empty-state #addPlayerBtn { padding: 1.1rem 1.3rem;
  } }
-
 .toast { position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); -webkit-transform: translateX(-50%); background: var(--brand); color: #fff; padding: .6rem .9rem; border-radius: .5rem;
  box-shadow: 0 6px 16px rgba(0,0,0,.3); -webkit-box-shadow: 0 6px 16px rgba(0,0,0,.3); opacity: 0; pointer-events: none; transition: opacity .2s ease; -webkit-transition: opacity .2s ease; z-index: 2000; }
 .toast.show { opacity: .98;
  }
-
 /* --- Hamburger/menuknap --- */
 #menuBtn { position: absolute; top: .75rem; right: .75rem; line-height: 1; padding: .45rem .6rem; font-size: 1.1rem;
  z-index: 4; }
 .btn.icon-only { width: 2.2rem; text-align: center; }
-
 /* --- Menuoverlay --- */
 .menu-head { display: flex; align-items: center; justify-content: space-between;
  gap: .5rem; }
@@ -88,7 +74,6 @@ body.empty-state #addPlayerBtn { position: fixed;
 .menu-item .name { font-weight: 700; }
 .menu-item .hint { color: var(--muted); font-size: .9rem;
  }
-
 /* === SHEET VIEWER === */
 .sheet-viewer { position: fixed; inset: 0; display: flex; flex-direction: column; z-index: 1500; background: var(--bg);
  color: var(--ink); }
@@ -99,110 +84,208 @@ body.empty-state #addPlayerBtn { position: fixed;
  border-bottom: 1px solid var(--border); padding-top: calc(.6rem + env(safe-area-inset-top, 0px)); }
 .sheet-viewer-title { margin: 0; font-size: 1.05rem; font-weight: 700;
  }
-
 /* Scroll-område for tabellen */
 .sheet-viewer-content { padding: .75rem; position: relative; overflow: auto; -webkit-overflow-scrolling: touch; flex: 1;
  }
-
 /* TABEL (viewer) */
 .sheet-table { min-width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; color: var(--ink); border-radius: .6rem;
  box-shadow: 0 8px 20px rgba(0,0,0,.25); -webkit-box-shadow: 0 8px 20px rgba(0,0,0,.25); }
-
 /* Gridlinjer */
 .sheet-viewer .sheet-table th,
 .sheet-viewer .sheet-table td {
-  border: 1px solid var(--border) !important;
+ border: 1px solid var(--border) !important;
  padding: .4rem .45rem;
-  vertical-align: top;
-  background-clip: padding-box;
+ vertical-align: top;
+ background-clip: padding-box;
 }
 .sheet-viewer .sheet-table th {
-  background: #f6f9ff;
-  text-align: left;
-  font-weight: 700;
- }
-
+ background: #f6f9ff;
+ text-align: left;
+ font-weight: 700;
+}
 /* Sticky første kolonne (Total) */
 .sheet-table.sticky-first-col th:first-child,
 .sheet-table.sticky-first-col td:first-child {
-  position: -webkit-sticky;
-  position: sticky;
-  left: 0;
-  background: #fff;
-  z-index: 6;
-  box-shadow: 1px 0 0 var(--border);
-  -webkit-box-shadow: 1px 0 0 var(--border);
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+ position: -webkit-sticky;
+ position: sticky;
+ left: 0;
+ background: #fff;
+ z-index: 6;
+ box-shadow: 1px 0 0 var(--border);
+ -webkit-box-shadow: 1px 0 0 var(--border);
+ transform: translateZ(0);
+ -webkit-transform: translateZ(0);
 }
-
 /* Sticky top-række i THEAD (KUN 1 række) */
-.sheet-table.sticky-top-rows thead tr:nth-child(1) th {
-  position: -webkit-sticky;
-  position: sticky;
+.sheet-table.sticky-first-col.sticky-top-rows thead tr:nth-child(1) th {
+ position: -webkit-sticky;
+ position: sticky;
  top: 0;
-  background: #f6f9ff;
-  z-index: 5;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+ background: #f6f9ff;
+ z-index: 8;
+ transform: translateZ(0);
+ -webkit-transform: translateZ(0);
 }
-
 /* Krydsfelt (øverst + første kolonne) øverst */
 .sheet-table.sticky-first-col.sticky-top-rows thead tr:nth-child(1) th:first-child {
-  z-index: 8;
- }
-
+ z-index: 9;
+}
 /* Nulstil utils */
 .sheet-viewer-content > *:first-child { margin-top: 0; }
-
 /* Tilbage-knap */
 .back-btn { display: inline-flex; align-items: center; gap: .35rem;
  flex: 0 0 auto; line-height: 1; padding: .35rem .55rem; border-radius: .5rem; background: var(--brand); color: #fff; border: 1px solid var(--brand);
  font-weight: 600; font-size: 1.5rem; cursor: pointer; }
 .back-btn:focus-visible { outline: 2px solid rgba(10,61,98,.25); }
-
 /* --- LODTRÆKNING & TILGÆNGELIGHED --- */
 .menu-heading {
-  padding: .55rem .7rem;
-  font-weight: 700;
-  color: var(--muted);
-  font-size: .9rem;
-  text-transform: uppercase;
-  border-bottom: 1px solid var(--border);
+ padding: .55rem .7rem;
+ font-weight: 700;
+ color: var(--muted);
+ font-size: .9rem;
+ text-transform: uppercase;
+ border-bottom: 1px solid var(--border);
 }
 .lottery-result-content {
-  margin-top: .5rem;
-  max-height: 60vh;
-  overflow: auto;
+ margin-top: .5rem;
+ max-height: 60vh;
+ overflow: auto;
 }
 .lottery-result-content h4 { /* Gruppe titler */
-  margin: .75rem 0 .25rem;
-  font-weight: 700;
-  color: var(--brand);
+ margin: .75rem 0 .25rem;
+ font-weight: 700;
+ color: var(--brand);
 }
 .lottery-result-content ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  border: 1px solid var(--border);
-  border-radius: .5rem;
-  overflow: hidden;
+ list-style: none;
+ padding: 0;
+ margin: 0;
+ border: 1px solid var(--border);
+ border-radius: .5rem;
+ overflow: hidden;
 }
 .lottery-result-content li {
-  padding: .5rem .7rem;
-  border-bottom: 1px solid var(--border);
+ padding: .5rem .7rem;
+ border-bottom: 1px solid var(--border);
 }
 .lottery-result-content li:last-child {
-  border-bottom: none;
+ border-bottom: none;
 }
 .visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+ position: absolute;
+ width: 1px;
+ height: 1px;
+ padding: 0;
+ margin: -1px;
+ overflow: hidden;
+ clip: rect(0, 0, 0, 0);
+ white-space: nowrap;
+ border: 0;
 }
+
+/* =========================================================
+   NYT: SUBFANER + SCOREKORT (listeform, ingen farver)
+   ========================================================= */
+
+/* Subfaner over indholdet (Bøder / Score) */
+.subtabs{
+  display:flex;
+  gap:.5rem;
+  margin: .25rem 0 .75rem;
+}
+.subtab{
+  background:#f1f3f7;
+  color:var(--ink);
+  padding:.45rem .85rem;
+  border:1px solid var(--border);
+  border-radius:.5rem;
+  cursor:pointer;
+  font-weight:600;
+}
+.subtab.active{
+  background:#fff;
+  color:var(--ink);
+  border-color:var(--brand);
+  box-shadow: 0 0 0 2px rgba(10,61,98,.08);
+}
+.subcontent{ padding-top:.25rem; }
+
+/* Scorekort – listeform */
+.scorecard{
+  display:block;
+}
+.score-row{
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+  padding:.35rem .2rem;
+  border-bottom:1px solid var(--border);
+}
+.score-row:last-child{ border-bottom:none; }
+.score-row .label{
+  width:6.5rem;
+  font-weight:700;
+  color:var(--muted);
+  flex:0 0 auto;
+}
+.score-row input[type="number"],
+.score-row input[type="text"]{
+  width:6rem;
+  padding:.45rem .5rem;
+  border:1px solid var(--border);
+  border-radius:.5rem;
+  background:#fff;
+  color:var(--ink);
+}
+.score-row input[readonly]{
+  background:#f8fafc;
+}
+
+/* Sektionstitler i scorekort (valgfrit) */
+.score-section-title{
+  font-weight:700;
+  color:var(--muted);
+  margin:.6rem 0 .2rem;
+}
+
+/* Samlede felter nederst */
+.score-total-wrap{
+  margin-top:.6rem;
+  padding:.6rem .5rem;
+  border:1px solid var(--border);
+  border-radius:.6rem;
+  background:#f8fafc;
+}
+.score-total-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.5rem;
+  padding:.2rem 0;
+}
+.score-total-line .name{
+  font-weight:700;
+  color:var(--ink);
+}
+.score-total-line .val{
+  min-width:4rem;
+  text-align:right;
+  font-weight:700;
+}
+
+/* Små skærme: lad inputs være lidt bredere */
+@media (max-width:420px){
+  .score-row .label{ width:5.5rem; }
+  .score-row input[type="number"],
+  .score-row input[type="text"]{ width:100%; max-width:7rem; }
+}
+
+/* Lidt luft over/under scorekortet */
+.subcontent .scorecard-wrap{
+  margin-top:.25rem;
+}
+
+/* Utility spacing hvis du får brug for det */
+.mt-4{ margin-top:1rem; }
+.mt-2{ margin-top:.5rem; }
+.mb-2{ margin-bottom:.5rem; }

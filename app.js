@@ -485,6 +485,16 @@ function loadPlayers() {
       delete p.rows['forkert-scorekort-1']; delete p.rows['forkert-scorekort-2'];
     });
     if (migrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    
+    parsed.forEach(p => {
+        if (!p.score) {
+            p.score = {
+                holes: Array(18).fill(0),
+                hcp: 0
+            };
+        }
+    });
+
     return parsed;
   } catch { return [];
 }
@@ -545,9 +555,14 @@ function addPlayer(displayName, meta = null){
 }
   if (!FINES.length) { alert('Bøder indlæses første gang. Prøv igen om et øjeblik (eller gå online).'); return;
 }
-  const p = { id: uid(), name: displayName.trim(), rows: createEmptyRows(), meta: meta ?? undefined };
+  const p = { id: uid(), name: displayName.trim(), rows: createEmptyRows(), score: { holes: Array(18).fill(0), hcp: 0 }, meta: meta ?? undefined };
+  
   players.push(p);
-  activePlayerId = p.id; savePlayers(players); render();
+  activePlayerId = p.id;
+  savePlayers(players);
+  // Sørg for at bøder er klar, og tegn først derefter
+  ensureFinesLoaded(0, false).finally(() => render());
+
 }
 function setActivePlayer(playerId){ activePlayerId = playerId; renderTabs(); renderPanels(); }
 function removeAllPlayers(){ players = []; activePlayerId = null;
@@ -595,7 +610,7 @@ function buildTableForPlayer(p){
       const plus = document.createElement('button'); plus.className = 'iconbtn plus'; plus.textContent = '+';
       wrap.append(minus, input, plus);
       minus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)-1, 0, 9999);
-p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
+      p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       plus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)+1, 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       input.addEventListener('change', () => { input.value = clamp(parseInt(input.value ?? '0',10), 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       tdCount.appendChild(wrap);
@@ -617,6 +632,8 @@ p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table
     }
   });
 
+  
+
   const tfoot = document.createElement('tfoot');
   const trTot = document.createElement('tr');
   const tdLbl = document.createElement('td'); tdLbl.textContent = 'At betale:'; tdLbl.className = 'row-label';
@@ -631,32 +648,189 @@ p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table
   updateAmounts(table, p);
   return table;
 }
-function renderPanels(){
-  panelsEl.innerHTML = '';
-  if (players.length === 0) return;
-  const panel = document.createElement('section'); panel.className = 'panel';
-  const p = players.find(x => x.id === activePlayerId) ?? players[0];
-  if (p) panel.appendChild(buildTableForPlayer(p));
-  panelsEl.appendChild(panel);
-}
-function calcAmount(player, fine){
-  if (!fine) return 0;
-  if (fine.type === 'count') { const n = Number(player.rows[fine.id] ?? 0);
-  const v = getFineValue(fine.id); return n * v; }
-  if (fine.type === 'check') { const v = getFineValue(fine.id);
-  return player.rows[fine.id] ? v : 0; }
-  if (fine.type === 'derived-check') {
-    if (!player.rows[fine.id]) return 0;
-    const src = FINE_MAP[fine.source];
-    return calcAmount(player, src);
+
+function renderScoreCard(player) {
+  const wrap = document.createElement('div');
+  wrap.className = 'scorecard';
+
+  // 18 huller i listeform
+  for (let i = 0; i < 18; i++) {
+    const row = document.createElement('div');
+    row.className = 'score-row';
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = `Hul ${i + 1}`;
+
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.min = 0;
+    inp.value = Number(player.score?.holes?.[i] ?? 0);
+
+    inp.addEventListener('change', () => {
+      if (!player.score) player.score = { holes: Array(18).fill(0), hcp: 0 };
+      player.score.holes[i] = Number(inp.value || 0);
+      savePlayers(players);
+      updateScoreTotals();
+    });
+
+    row.append(label, inp);
+    wrap.appendChild(row);
   }
-  
-  if (fine.type === 'one') {
-    if (player.rows['afbud']) return 0;
-    return getFineValue(fine.id);
+
+  // Tildelte slag (hcp)
+  const hcpRow = document.createElement('div');
+  hcpRow.className = 'score-row';
+
+  const hcpLab = document.createElement('div');
+  hcpLab.className = 'label';
+  hcpLab.textContent = 'Tildelte slag';
+
+  const hcpInput = document.createElement('input');
+  hcpInput.type = 'number';
+  hcpInput.min = 0;
+  hcpInput.value = Number(player.score?.hcp ?? 0);
+  hcpInput.addEventListener('change', () => {
+    if (!player.score) player.score = { holes: Array(18).fill(0), hcp: 0 };
+    player.score.hcp = Number(hcpInput.value || 0);
+    savePlayers(players);
+    updateScoreTotals();
+  });
+
+  hcpRow.append(hcpLab, hcpInput);
+  wrap.appendChild(hcpRow);
+
+  // Total (sum) + Netto (sum - hcp)
+  const totRow = document.createElement('div');
+  totRow.className = 'score-row';
+  const totLab = document.createElement('div');
+  totLab.className = 'label';
+  totLab.textContent = 'Total';
+  const totVal = document.createElement('input');
+  totVal.type = 'text';
+  totVal.readOnly = true;
+  totVal.id = `score-total-${player.id}`;
+  totRow.append(totLab, totVal);
+  wrap.appendChild(totRow);
+
+  const netRow = document.createElement('div');
+  netRow.className = 'score-row';
+  const netLab = document.createElement('div');
+  netLab.className = 'label';
+  netLab.textContent = 'Netto';
+  const netVal = document.createElement('input');
+  netVal.type = 'text';
+  netVal.readOnly = true;
+  netVal.id = `score-net-${player.id}`;
+  netRow.append(netLab, netVal);
+  wrap.appendChild(netRow);
+
+  function updateScoreTotals() {
+    const total = (player.score?.holes ?? []).reduce((a, b) => a + Number(b || 0), 0);
+    const net = total - Number(player.score?.hcp || 0);
+    totVal.value = total;
+    netVal.value = net;
   }
-  return 0;
+
+  updateScoreTotals();
+  return wrap;
 }
+
+function renderPanels() {
+    panelsEl.innerHTML = '';
+    if (!players.length) return;
+
+    const p = players.find(x => x.id === activePlayerId) ?? players[0];
+
+    const panel = document.createElement('section');
+    panel.className = 'panel';
+
+    // --- SUBTABS ---
+    const tabs = document.createElement('div');
+    tabs.className = 'subtabs';
+
+    const btnF = document.createElement('button');
+    btnF.className = 'subtab active';
+    btnF.textContent = 'Bøder';
+
+    const btnS = document.createElement('button');
+    btnS.className = 'subtab';
+    btnS.textContent = 'Score';
+
+    tabs.append(btnF, btnS);
+    panel.appendChild(tabs);
+
+    // --- CONTENT AREA ---
+    const content = document.createElement('div');
+    content.className = 'subcontent';
+    panel.appendChild(content);
+
+    const showFines = () => {
+    btnF.classList.add('active');
+    btnS.classList.remove('active');
+    content.innerHTML = '';
+
+    // Hvis bøder ikke er indlæst endnu, vis "Indlæser..." og prøv igen
+    if (!Array.isArray(FINES) || FINES.length === 0) {
+      const loading = document.createElement('div');
+      loading.textContent = 'Indlæser bøder…';
+      content.appendChild(loading);
+
+      ensureFinesLoaded(0, false).then(() => {
+        // Tegn igen, når bøderne er kommet
+        content.innerHTML = '';
+        content.appendChild(buildTableForPlayer(p));
+      });
+      return;
+    }
+
+    content.appendChild(buildTableForPlayer(p));
+  };
+
+    const showScore = () => {
+        btnS.classList.add('active');
+        btnF.classList.remove('active');
+        content.innerHTML = '';
+        content.appendChild(renderScoreCard(p));
+    };
+
+    btnF.addEventListener('click', showFines);
+    btnS.addEventListener('click', showScore);
+
+    // Standardvisning
+    showFines();
+
+    panelsEl.appendChild(panel);
+}
+
+function calcAmount(player, fine) {
+    if (!fine) return 0;
+
+    if (fine.type === 'count') {
+        const n = Number(player.rows[fine.id] ?? 0);
+        const v = getFineValue(fine.id);
+        return n * v;
+    }
+
+    if (fine.type === 'check') {
+        const v = getFineValue(fine.id);
+        return player.rows[fine.id] ? v : 0;
+    }
+
+    if (fine.type === 'derived-check') {
+        if (!player.rows[fine.id]) return 0;
+        const src = FINE_MAP[fine.source];
+        return calcAmount(player, src);
+    }
+
+    if (fine.type === 'one') {
+        if (player.rows['afbud']) return 0;
+        return getFineValue(fine.id);
+    }
+
+    return 0;
+}
+
 function updateAmounts(table, player){
   let total = 0;
   for (const fine of FINES){
@@ -870,7 +1044,7 @@ pickerConfirm.addEventListener('click', async () => {
     const key = `${it.faneNavn}\n${it.navn}`;
     if (!selectedKeys.includes(key)) continue;
     if (slots <= 0) break;
-    const display = it.faneNavn || it.navn;
+    const display = (it.faneNavn && String(it.faneNavn).trim()) ? it.faneNavn : it.navn;
     if (!hasDuplicate(display, { navn: it.navn })) { addPlayer(display, { navn: it.navn }); slots--; }
   }
   closePicker();
