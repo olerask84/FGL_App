@@ -650,6 +650,41 @@ function buildTableForPlayer(p){
 }
 
 function renderScoreCard(player) {
+  // Hjælpere til cross-player navigation
+  function getPlayerIndex(id) {
+      return players.findIndex(p => p.id === id);
+  }
+
+  function focusSameHoleOnNextPlayer(currentPlayerId, holeIndex) {
+      const idx = getPlayerIndex(currentPlayerId);
+      if (idx === -1) return;
+
+      const nextIndex = (idx + 1) % players.length; // wrap around
+      const nextPlayer = players[nextIndex];
+
+      // Skift aktiv spiller i UI
+      activePlayerId = nextPlayer.id;
+      renderTabs();
+      renderPanels();
+
+      // Giv panelet tid til at tegne
+      setTimeout(() => {
+        // 1) Skift aktiv subtab til "Score"
+        const scoreBtn = document.querySelector('.subtabs .subtab:nth-child(2)');
+        if (scoreBtn) {
+          scoreBtn.click(); // aktiver "Score"-fanen for den nye spiller
+        }
+
+        // 2) Find samme hul (1..18) og fokuser
+        const nextHoleInput = document.querySelector(
+          `.score-row:nth-child(${holeIndex + 1}) input`
+        );
+        if (nextHoleInput) {
+          nextHoleInput.focus();
+          nextHoleInput.select?.();
+        }
+      }, 30);
+  }
   const wrap = document.createElement('div');
   wrap.className = 'scorecard';
 
@@ -669,11 +704,25 @@ function renderScoreCard(player) {
     // Vis intet hvis værdien er 0
     inp.value = player.score.holes[i] ? player.score.holes[i] : "";
 
+    
+    // Når et hul er ændret → hop til samme hul hos næste spiller
     inp.addEventListener('change', () => {
-        // Hvis feltet er tomt, gem 0
         player.score.holes[i] = Number(inp.value || 0);
         savePlayers(players);
         updateScoreTotals();
+
+        // Kun hop videre hvis der blev skrevet noget
+        if (inp.value !== "") {
+            focusSameHoleOnNextPlayer(player.id, i);
+        }
+    });
+
+    // Enter eller pil ned = hop til samme hul næste spiller
+    inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            focusSameHoleOnNextPlayer(player.id, i);
+        }
     });
 
     row.append(label, inp);
