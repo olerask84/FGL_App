@@ -709,19 +709,27 @@ function renderScoreCard(player) {
         player.score.holes[i] = Number(inp.value || 0);
         savePlayers(players);
         updateScoreTotals();
-
+      
+        /*
         // Kun hop videre hvis der blev skrevet noget
         if (inp.value !== "") {
             focusSameHoleOnNextPlayer(player.id, i);
         }
+        */
+      
     });
 
     // Enter eller pil ned = hop til samme hul næste spiller
     inp.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        /*if (e.key === 'Enter' || e.key === 'ArrowDown') {
             e.preventDefault();
             focusSameHoleOnNextPlayer(player.id, i);
-        }
+        }*/
+      const keysThatAdvance = ['Enter', 'ArrowDown', 'Next', 'Done'];
+      if (keysThatAdvance.includes(e.key)) { 
+        e.preventDefault();
+        focusSameHoleOnNextPlayer(player.id, i);
+      }
     });
 
     row.append(label, inp);
