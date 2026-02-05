@@ -703,8 +703,6 @@ function renderScoreCard(player) {
 
     // Vis intet hvis værdien er 0
     inp.value = player.score.holes[i] ? player.score.holes[i] : "";
-
-    /*
     
     // Når et hul er ændret → hop til samme hul hos næste spiller
     inp.addEventListener('change', () => {
@@ -717,8 +715,6 @@ function renderScoreCard(player) {
             focusSameHoleOnNextPlayer(player.id, i);
         }
     });
-    
-    */
 
     // Enter eller pil ned = hop til samme hul næste spiller
     inp.addEventListener('keydown', (e) => {
