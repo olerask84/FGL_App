@@ -704,6 +704,7 @@ function renderScoreCard(player) {
     // Vis intet hvis værdien er 0
     inp.value = player.score.holes[i] ? player.score.holes[i] : "";
 
+    /*
     
     // Når et hul er ændret → hop til samme hul hos næste spiller
     inp.addEventListener('change', () => {
@@ -716,6 +717,8 @@ function renderScoreCard(player) {
             focusSameHoleOnNextPlayer(player.id, i);
         }
     });
+    
+    */
 
     // Enter eller pil ned = hop til samme hul næste spiller
     inp.addEventListener('keydown', (e) => {
@@ -740,7 +743,8 @@ function renderScoreCard(player) {
   const hcpInput = document.createElement('input');
   hcpInput.type = 'number';
   hcpInput.min = 0;
-  hcpInput.value = Number(player.score?.hcp ?? 0);
+  //hcpInput.value = Number(player.score?.hcp ?? 0);
+  hcpInput.value = player.score?.hcp ? player.score?.hcp : "";
   hcpInput.addEventListener('change', () => {
     if (!player.score) player.score = { holes: Array(18).fill(0), hcp: 0 };
     player.score.hcp = Number(hcpInput.value || 0);
