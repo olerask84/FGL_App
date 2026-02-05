@@ -724,6 +724,14 @@ function renderScoreCard(player) {
       
     });
 
+    // Android IME action 
+    inp.addEventListener("beforeinput", (e) => {
+      if (e.inputType === "insertLineBreak") {
+        e.preventDefault();
+        focusSameHoleOnNextPlayer(player.id, i);
+      }
+    });
+
     // Enter eller pil ned = hop til samme hul næste spiller
     inp.addEventListener('keydown', (e) => {
         /*if (e.key === 'Enter' || e.key === 'ArrowDown') {
