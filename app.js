@@ -703,6 +703,7 @@ function renderScoreCard(player) {
     inp.type = 'text';
     inp.inputMode = 'numeric';
     inp.pattern = '[0-9]*';
+    inp.enterKeyHint = 'Done';
     
     inp.min = 0;
 
