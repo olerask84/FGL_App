@@ -725,7 +725,7 @@ function renderScoreCard(player) {
             e.preventDefault();
             focusSameHoleOnNextPlayer(player.id, i);
         }*/
-      const keysThatAdvance = ['Enter', 'ArrowDown', 'Next', 'Done'];
+      const keysThatAdvance = ['Enter', 'ArrowDown', 'Next', 'Done', 'Tab'];
       if (keysThatAdvance.includes(e.key)) { 
         e.preventDefault();
         focusSameHoleOnNextPlayer(player.id, i);
