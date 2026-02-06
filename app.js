@@ -614,11 +614,31 @@ function buildTableForPlayer(p){
       plus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)+1, 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       input.addEventListener('change', () => { input.value = clamp(parseInt(input.value ?? '0',10), 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       tdCount.appendChild(wrap);
-    } else {
+      
+      } else {
+        // Brug samme grid som tælleren, og placer checkbox i midterste kolonne
+        const wrap = document.createElement('div');
+        wrap.className = 'counter';               // 3 kolonner: [minus] [midt] [plus]
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!p.rows[fine.id];
+        cb.style.gridColumn = '2';                // midterste kolonne
+        cb.style.justifySelf = 'center';          // centrér i kolonnen
+
+        cb.addEventListener('change', () => {
+          p.rows[fine.id] = cb.checked; savePlayers(players); updateAmounts(table, p);
+        });
+
+        wrap.appendChild(cb);
+        tdCount.appendChild(wrap);
+      }
+      
+   /* } else {
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!p.rows[fine.id];
       cb.addEventListener('change', () => { p.rows[fine.id] = cb.checked; savePlayers(players); updateAmounts(table, p); });
       tdCount.appendChild(cb);
-    }
+    }*/
 
     const amtInput = document.createElement('input');
     amtInput.type = 'text'; amtInput.className = 'amount-field'; amtInput.readOnly = true; amtInput.value = '0'; amtInput.dataset.fineId = fine.id;
