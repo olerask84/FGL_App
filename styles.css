@@ -203,7 +203,7 @@ body.empty-state #addPlayerBtn { position: fixed;
   font-weight:600;
 }
 .subtab.active{
-  background:#fff;
+  background:eaf7ee;
   color:var(--ink);
   border-color:var(--brand);
   box-shadow: 0 0 0 2px rgba(10,61,98,.08);
