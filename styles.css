@@ -29,7 +29,7 @@ body::before{content:"";position:fixed;inset:0;background-image:url('assets/icon
 .counter .num{width:4.5rem;text-align:center;padding:.4rem;border:1px solid var(--border);border-radius:.4rem;background:#f8fafc}
 .counter .iconbtn{background:#e6f0ff;border:1px solid #cfe0ff;color:#084298;border-radius:.45rem;padding:.40rem .70rem;font-size:1.1rem;min-width:2.4rem;min-height:2.4rem;font-weight:800}
 .counter .iconbtn.minus{background:#eaf7ee;border-color:#cfeedd;color:#0e6f3a}
-.amount-field{width:100%;text-align:right;padding:.4rem;border:1px solid var(--border);border-radius:.45rem;background:#f8fafc}
+.amount-field{width:100%;text-align:right;padding:.4rem;border:1px solid var(--border);border-radius:.4rem;background:#f8fafc}
 .total-field{width:6.5rem}
 .row-label{font-weight:700}
 .section-gap{height:.5rem}
