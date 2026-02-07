@@ -1,9 +1,10 @@
-// Bevarer v21-funktionalitet (picker, faner, sending, cache), bruger robust GViz-parsing,
+﻿// Bevarer v21-funktionalitet (picker, faner, sending, cache), bruger robust GViz-parsing,
 // og viewer-tabel med sticky thead (KUN 1 række) + sticky første kolonne på "Total".
 const STORAGE_KEY = 'fgl.players.v1';
 const MAX_PLAYERS = 4;
 const MIN_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
 // 4 timer
+
 
 // === Afslut runde backend-konfiguration ===
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnrBXAAL3wf1GMxZo4P-cWL-MGVPj4TtVhSHZc7Pp46VKK6aD84MfH3BIE56rUU9stCQ/exec';
@@ -12,10 +13,12 @@ const AUTO_RESET_AFTER_SEND = true;
 const ENABLE_OFFLINE_QUEUE = true;
 const ROUND_QUEUE_KEY = 'fgl.round.queue.v1';
 
+
 // Google Sheet-konfiguration (læsning)
 const SHEET_ID = '113sdXTQcfODil1asdol1DCWZPcMKHQb5QTA1lj8Qn5A';
 const SHEET_NAME = 'Spiller';
 const SHEET_GID = '';
+
 
 // Offline-cache til spillerlisten
 const SHEET_CACHE_KEY = 'fgl.sheet.players.v1';
@@ -24,6 +27,7 @@ const SHEET_CACHE_META_KEY = 'fgl.sheet.players.meta.v1';
 const FINES_CACHE_KEY = 'fgl.sheet.fines.v1';
 const FINES_CACHE_META_KEY = 'fgl.sheet.fines.meta.v1';
 
+
 // Dynamiske bøder
 let FINES = [];
 // [{id, name, type: 'count'|'check'|'derived-check', value, [source]}]
@@ -31,9 +35,11 @@ let FINE_MAP = {};
 // id -> fine
 function rebuildFineMap(){ FINE_MAP = Object.fromEntries(FINES.map(f => [f.id, f])); }
 
+
 // UI / app-state
 let players = loadPlayers();
 let activePlayerId = players[0]?.id ?? null;
+
 
 // Elementer
 const tabsEl = document.getElementById('tabs');
@@ -41,14 +47,17 @@ const panelsEl = document.getElementById('tabPanels');
 const addBtn = document.getElementById('addPlayerBtn');
 const resetBtn = document.getElementById('resetBtn');
 
+
 const overlay = document.getElementById('confirmOverlay');
 const confirmYes = document.getElementById('confirmYes');
 const confirmNo = document.getElementById('confirmNo');
+
 
 const pickerOverlay = document.getElementById('pickerOverlay');
 const pickerList = document.getElementById('pickerList');
 const pickerClose = document.getElementById('pickerClose');
 const pickerConfirm = document.getElementById('pickerConfirm');
+
 
 let pickerSelected = new Set();
 let sheetPlayers = [];  // [{navn, faneNavn}]
@@ -73,6 +82,7 @@ const sheetViewerTitle = document.getElementById('sheetViewerTitle');
 const sheetViewerContent = document.getElementById('sheetViewerContent');
 const sheetBack = document.getElementById('sheetBack');
 
+
 // NYE elementer til lodtrækning
 const lotteryPickerOverlay = document.getElementById('lotteryPickerOverlay');
 const lotteryPickerList = document.getElementById('lotteryPickerList');
@@ -82,6 +92,8 @@ const lotteryResultOverlay = document.getElementById('lotteryResultOverlay');
 const lotteryResultContent = document.getElementById('lotteryResultContent');
 const lotteryResultClose = document.getElementById('lotteryResultClose');
 let lotteryPickerSelected = new Set();
+
+
 
 
 // Udled unikke faner fra Spiller-arket
@@ -102,6 +114,7 @@ function getAvailableTabsFromPlayers() {
   return arr;
 }
 
+
 // ------------------------------- Utils --------------------------------
 function uid(){ return 'p-' + Math.random().toString(36).slice(2, 9); }
 function clamp(n, min, max){ return Math.max(min, Math.min(max, n));
@@ -121,6 +134,7 @@ function hashString(str) {
 }
   return (h>>>0).toString(16);
 }
+
 
 // Robust GViz-parser uden regex
 function parseGViz(text) {
@@ -150,6 +164,7 @@ function parseGViz(text) {
   return JSON.parse(jsonStr);
 }
 
+
 // ---------------- Players: cache & fetch ----------------
 function loadSheetCache(){
   try {
@@ -168,6 +183,7 @@ function calcListHash(list){
   return hashString(JSON.stringify(norm));
 }
 
+
 async function fetchSheetPlayersFromNetwork(){
   sheetLoadError = null;
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
@@ -178,6 +194,7 @@ async function fetchSheetPlayersFromNetwork(){
   const resp = await fetch(url, { cache: 'no-store' });
   if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
   const text = await resp.text();
+
 
   const json = parseGViz(text);
   if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
@@ -198,146 +215,51 @@ async function fetchSheetPlayersFromNetwork(){
   }
   if (idxNavn === -1) throw new Error('Kolonnen "Navn" blev ikke fundet.');
   const result = [];
-  let started = false;
   for (const r of rows) {
-    if (!started) {
-      const a=label(r.c?.[0]?.v), b=label(r.c?.[1]?.v);
-      if (a==='navn' && b==='fane navn') { started = true; continue;
-}
-    }
-    const c = r.c ?? [];
-    const navn = (c[idxNavn]?.v ?? '').toString().trim();
-    const fane = (idxFane >= 0 ? (c[idxFane]?.v ?? '') : '').toString().trim();
-    if (navn) result.push({ navn, faneNavn: fane || navn });
+    const navn = (r.c?.[idxNavn]?.v ?? '').toString().trim();
+    const faneNavn = (r.c?.[idxFane]?.v ?? '').toString().trim();
+    if (!navn || !faneNavn) continue;
+    result.push({ navn, faneNavn });
   }
   return result;
 }
 
-async function refreshSheetPlayersIfOnline(minAgeMs = 0){
-  const { meta } = loadSheetCache();
-  if (minAgeMs && meta?.updatedAt && (Date.now() - meta.updatedAt) < minAgeMs) return { changed: false, reason: 'fresh-enough' };
-  if (!navigator.onLine) return { changed: false, reason: 'offline' };
-  try {
-    const fresh = await fetchSheetPlayersFromNetwork();
-    const newHash = calcListHash(fresh);
-    if (newHash !== meta?.hash){
-      saveSheetCache(fresh, { hash: newHash, updatedAt: Date.now() });
-      sheetPlayers = fresh; sheetLoaded = true;
-      return { changed: true };
-    }
-    return { changed: false, reason: 'no-change' };
-  } catch (err) {
-    sheetLoadError = err; return { changed: false, reason: 'error', error: err };
+
+async function refreshSheetPlayersIfOnline(minInterval = 0, manualRefresh = false){
+  const now = Date.now();
+  const { list: cached, meta } = loadSheetCache();
+  const lastFetch = Number(meta.lastFetch ?? 0);
+  if (!manualRefresh && (now - lastFetch < minInterval) && cached.length) {
+    return { changed: false, list: cached };
   }
+  const fetched = await fetchSheetPlayersFromNetwork();
+  const oldHash = meta.hash ?? '';
+  const newHash = calcListHash(fetched);
+  const changed = (oldHash !== newHash);
+  saveSheetCache(fetched, { lastFetch: now, hash: newHash });
+  return { changed, list: fetched };
 }
 
-// --- Hent hele fanen som 2D-array
-async function fetchSheetTabAsTable(tabName){
-  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
-  const url = `${base}&sheet=${encodeURIComponent(tabName)}`;
-  const resp = await fetch(url, { cache: 'no-store' });
-  if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
-  const text = await resp.text();
 
-  const json = parseGViz(text);
-  if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
-  const cols = (json.table.cols ?? []);
-  const rows = (json.table.rows ?? []);
-  const out = [];
-  // Header-række (labels)
-  if (cols.length) out.push(cols.map(c => (c?.label ?? '').toString()));
-  // Data-rækker
-  for (const r of rows) {
-    const c = r.c ?? [];
-    const row = c.map(cell => {
-      if (!cell) return '';
-      const f = (cell.f != null) ? String(cell.f) : null;
-      const v = (cell.v != null) ? String(cell.v) : '';
-      return f ?? v;
-    });
-    let last = row.length - 1;
-    while (last >= 0 && (row[last] == null || row[last] === '')) last--;
-    out.push(row.slice(0, last + 1));
-  }
-  while (out.length && out[out.length - 1].every(x => (x ?? '') === '')) out.pop();
-  return out;
-}
-
-// ---------------- Viewer ----------------
-function openSheetViewer(tabName) {
-  sheetViewerTitle.textContent = tabName;
-  sheetViewerContent.innerHTML = '<div class="sheet-empty">Indlæser…</div>';
-  sheetViewer.classList.remove('hidden');
-  if (!navigator.onLine) {
-    sheetViewerContent.innerHTML = `
-      <div class="sheet-offline">
-        <strong>Ikke online.</strong> Kunne ikke hente data fra arket.<br/>
-        Prøv igen, når du er online.
-      </div>`;
+async function ensureSheetPlayersLoaded(minInterval){
+  const { list, meta } = loadSheetCache();
+  const lastFetch = Number(meta.lastFetch ?? 0);
+  const now = Date.now();
+  if ((now - lastFetch < minInterval) && list.length) {
+    sheetPlayers = list;
+    sheetLoaded = true;
     return;
   }
-
-  (async () => {
-    try {
-      const table = await fetchSheetTabAsTable(tabName);
-      if (!table.length) {
-        sheetViewerContent.innerHTML = '<div class="sheet-empty">Intet indhold i arket.</div>';
-        return;
-      }
-      const sticky = tabName.toLowerCase() === 'total';
-      const html = renderArrayAsHtmlTable(table, {
-        stickyFirstCol: sticky,
-        stickyTopRows:  sticky // kun 1 sticky-række i <thead>
-      });
-      sheetViewerContent.innerHTML = html;
-      // (Ingen initStickyViewerTables nødvendig, da vi kun fryser 1 række)
-    } catch (err) {
-      sheetViewerContent.innerHTML = `
-        <div class="sheet-offline">
-          <strong>Fejl:</strong> ${String(err)}
-        </div>`;
-    }
-  })();
-}
-function closeSheetViewer() {
-  sheetViewer.classList.add('hidden');
-  sheetViewerContent.innerHTML = '';
-}
-
-// Renders tabellen – stickyTopRows=true => KUN 1 header-række i <thead>
-function renderArrayAsHtmlTable(arr, opts = {}) {
-  const { stickyFirstCol = false, stickyTopRows = false } = opts;
-  const [header, ...bodyRows] = arr;
-
-  const cls = 'sheet-table'
-    + (stickyFirstCol ? ' sticky-first-col' : '')
-    + (stickyTopRows ? ' sticky-top-rows' : '');
-  const theadHtml = header
-    ? `<thead><tr>${header.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>`
-    : '';
-  const tbodyHtml = bodyRows.length
-    ? `<tbody>${bodyRows.map(r => `<tr>${r.map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('')}</tbody>`
-    : '';
-  return `<table class="${cls}">${theadHtml}${tbodyHtml}</table>`;
-}
-
-function escapeHtml(s) {
-  // (Bevarer oprindelig mapping; ændres ikke for at undgå sideeffekter)
-  return String(s ?? '').replace(/[&<>"']/g, m => ({
-    '&':'&','<':'<','>':'>','"':'"',"'":'&#39;'
-  }[m]));
-}
-
-// Tilbage-knap
-if (sheetBack) sheetBack.addEventListener('click', closeSheetViewer);
-
-// Opdater viewer hvis forbindelsen kommer tilbage mens den er åben
-window.addEventListener('online', () => {
-  if (!sheetViewer.classList.contains('hidden')) {
-    const tabName = sheetViewerTitle.textContent || '';
-    if (tabName) openSheetViewer(tabName);
+  try { const { list: newList } = await refreshSheetPlayersIfOnline(minInterval);
+    sheetPlayers = newList;
+    sheetLoaded = true;
+  } catch (err) {
+    sheetLoadError = err;
+    sheetPlayers = list.length ? list : [];
+    sheetLoaded = false;
   }
-});
+}
+
 
 // ---------------- Fines: cache & fetch ----------------
 function loadFinesCache(){
@@ -351,527 +273,707 @@ function saveFinesCache(list, meta = {}){
   localStorage.setItem(FINES_CACHE_KEY, JSON.stringify(list));
   localStorage.setItem(FINES_CACHE_META_KEY, JSON.stringify(meta));
 }
-function calcFinesHash(list){
-  const norm = list.map(f=>({ name:(f.name??'').trim(), value:Number(f.value??0), type:(f.type??'').trim().toLowerCase() }));
-  return hashString(JSON.stringify(norm));
-}
+
 
 async function fetchFinesFromNetwork(){
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
-  const where = SHEET_GID
-    ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
-    : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
-  const url = `${where}&range=D:F&headers=1`;
-
+  const url = `${base}&sheet=Boder&range=A:C&headers=1`;
   const resp = await fetch(url, { cache: 'no-store' });
-  if (!resp.ok) throw new Error(`Bøder: hentning fejlede (${resp.status})`);
+  if (!resp.ok) throw new Error(`Bøder hentning fejlede (${resp.status})`);
   const text = await resp.text();
-
   const json = parseGViz(text);
-  if (!json.table) throw new Error('Bøder: ugyldigt gviz-svar (mangler table)');
-
-  const label = s => (s ?? '').toString().trim().replace(/:$/, '').toLowerCase();
-  const isName  = x => ['bøde','bode','fine','name'].includes(x);
-  const isValue = x => ['værdi','vaerdi','value','beløb','beloeb'].includes(x);
-  const isType  = x => ['type','kategori'].includes(x);
+  if (!json.table) throw new Error('Ugyldigt gviz-svar (mangler table)');
+  const label = s => (s ?? '').toString().trim().toLowerCase();
   const cols = (json.table.cols ?? []).map(c => label(c.label));
-  let idxName = cols.findIndex(isName),
-      idxValue = cols.findIndex(isValue),
-      idxType = cols.findIndex(isType);
+  const idxNavn = cols.indexOf('navn');
+  const idxType = cols.indexOf('type');
+  const idxValue = cols.indexOf('værdi');
   const rows = json.table.rows ?? [];
-
-  if (idxName === -1 || idxValue === -1 || idxType === -1) {
-    let headerRow = null;
-    for (const r of rows) {
-      const a = label(r.c?.[0]?.v), b = label(r.c?.[1]?.v), c = label(r.c?.[2]?.v);
-      if (a && b && c) { headerRow = r; break;
-}
-    }
-    if (headerRow) {
-      const a = label(headerRow.c?.[0]?.v), b = label(headerRow.c?.[1]?.v), c = label(headerRow.c?.[2]?.v);
-      if (isName(a))  idxName  = 0;
-      if (isValue(b)) idxValue = 1;
-      if (isType(c))  idxType  = 2;
-    }
+  if (idxNavn === -1 || idxType === -1 || idxValue === -1) {
+    throw new Error('Kolonner i Boder-ark er ikke korrekte (navn, type, værdi)');
   }
-
-  if (idxName  === -1) throw new Error('Bøder: kolonnen "Bøde/fine" blev ikke fundet (i D:F).');
-  if (idxValue === -1) throw new Error('Bøder: kolonnen "Værdi/value" blev ikke fundet (i D:F).');
-  if (idxType  === -1) throw new Error('Bøder: kolonnen "Type" blev ikke fundet (i D:F).');
-
-  const list = [];
-  let started = false;
+  const arr = [];
   for (const r of rows) {
-    if (!started) {
-      const a = label(r.c?.[0]?.v), b = label(r.c?.[1]?.v), c = label(r.c?.[2]?.v);
-      if (isName(a) && isValue(b) && isType(c)) { started = true; continue;
-}
-    }
-    const c = r.c ?? [];
-    const name = (c[idxName]?.v ?? '').toString().trim();
-    if (!name) continue;
-    const value = Number((c[idxValue]?.v ?? 0)) || 0;
-    let type = (c[idxType]?.v ?? '').toString().trim().toLowerCase();
-
-    //const item = { id: slugify(name), name, value, type: (type === 'derived-check' ? 'derived-check' : (type === 'check' ? 'check' : 'count')) };
-    
-    const t = (type || '').toLowerCase();
-    const item = {
-      id: slugify(name),
-      name,
-      value,
-      // NYT: støt 'one' som egen type, ellers eksisterende mapping
-      type: (t === 'one') ? 'one' : (t === 'derived-check' ? 'derived-check' : (t === 'check' ? 'check' : 'count'))
-    };
-
-    if (slugify(name) === 'alle-green-misset') { item.type = 'derived-check'; item.source = slugify('Misset Green'); }
-    list.push(item);
+    const name = (r.c?.[idxNavn]?.v ?? '').toString().trim();
+    const type = (r.c?.[idxType]?.v ?? '').toString().trim().toLowerCase();
+    let val = r.c?.[idxValue]?.v ?? '';
+    if (typeof val === 'number') val = val.toString();
+    val = val.toString().trim();
+    if (!name || !type) continue;
+    const id = slugify(name);
+    const typeNorm = type.startsWith('afkryds') ? 'check' : type === 'antal' ? 'count' : 'count';
+    let numVal = parseInt(val, 10);
+    if (isNaN(numVal)) numVal = (typeNorm === 'check') ? 10 : 0;
+    if (typeNorm === 'check' && numVal === 0) numVal = 10;
+    arr.push({ id, name, type: typeNorm, value: numVal });
   }
-  return list;
+  return arr;
 }
 
-async function refreshFinesIfOnline(minAgeMs = 0){
-  const { meta } = loadFinesCache();
-  if (minAgeMs && meta?.updatedAt && (Date.now() - meta.updatedAt) < minAgeMs) return { changed: false, reason: 'fresh-enough' };
-  if (!navigator.onLine) return { changed: false, reason: 'offline' };
+
+async function refreshFinesIfOnline(minInterval = 0, manualRefresh = false){
+  const now = Date.now();
+  const { list: cached, meta } = loadFinesCache();
+  const lastFetch = Number(meta.lastFetch ?? 0);
+  if (!manualRefresh && (now - lastFetch < minInterval) && cached.length) {
+    return { changed: false, list: cached };
+  }
+  const fetched = await fetchFinesFromNetwork();
+  const oldHash = hashString(JSON.stringify(cached.map(f => f.id + f.name + f.type + f.value)));
+  const newHash = hashString(JSON.stringify(fetched.map(f => f.id + f.name + f.type + f.value)));
+  const changed = (oldHash !== newHash);
+  saveFinesCache(fetched, { lastFetch: now, hash: newHash });
+  return { changed, list: fetched };
+}
+
+
+async function ensureFinesLoaded(minInterval, manualRefresh = false){
+  const { list, meta } = loadFinesCache();
+  const lastFetch = Number(meta.lastFetch ?? 0);
+  const now = Date.now();
+  if (!manualRefresh && (now - lastFetch < minInterval) && list.length) {
+    FINES = list;
+    rebuildFineMap();
+    return;
+  }
   try {
-    const fresh = await fetchFinesFromNetwork();
-    const newHash = calcFinesHash(fresh);
-    if (newHash !== meta?.hash){
-      saveFinesCache(fresh, { hash: newHash, updatedAt: Date.now() });
-      return { changed: true };
-    }
-    return { changed: false, reason: 'no-change' };
+    const { list: newList } = await refreshFinesIfOnline(minInterval, manualRefresh);
+    FINES = newList;
+    rebuildFineMap();
   } catch (err) {
-    console.error(err);
-    return { changed: false, reason: 'error', error: err };
+    if (list.length) { FINES = list; rebuildFineMap(); }
   }
 }
 
-async function ensureFinesLoaded(minAgeMs = 0, showToastOnChange = true){
-  let loaded = false;
-  const cached = loadFinesCache();
-  if (cached.list && cached.list.length){
-    FINES = cached.list; rebuildFineMap(); migratePlayersForFines(); loaded = true;
-  }
-  const { changed } = await refreshFinesIfOnline(minAgeMs);
-  if (changed){
-    const updated = loadFinesCache().list;
-    if (updated.length){
-      FINES = updated; rebuildFineMap(); migratePlayersForFines();
-      if (players.length) renderPanels();
-      if (showToastOnChange) showToast('Bøder opdateret');
-      loaded = true;
-    }
-  }
-  return loaded;
+
+// ---------------- Player storage ----------------
+function loadPlayers(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'); }
+  catch { return []; }
+}
+function savePlayers(arr){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
 }
 
-// ---------------- Persistens for spillere ----------------
-function loadPlayers() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    let migrated = false;
-    parsed.forEach(p => {
-      if (!p.rows) return;
-      const brokSum = (p.rows['brok'] ?? 0) + (p.rows['brok-1'] ?? 0) + (p.rows['brok-2'] ?? 0);
-      if (brokSum !== (p.rows['brok'] ?? 0)) { p.rows['brok'] = brokSum; migrated = true; }
-      delete p.rows['brok-1']; delete p.rows['brok-2'];
-      const fsSum = (p.rows['forkert-scorekort'] ?? 0) + (p.rows['forkert-scorekort-1'] ?? 0) + (p.rows['forkert-scorekort-2'] ?? 0);
-      if (fsSum !== (p.rows['forkert-scorekort'] ?? 0)) { p.rows['forkert-scorekort'] = fsSum; migrated = true; }
-      delete p.rows['forkert-scorekort-1']; delete p.rows['forkert-scorekort-2'];
-    });
-    if (migrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-    
-    parsed.forEach(p => {
-        if (!p.score) {
-            p.score = {
-                holes: Array(18).fill(0),
-                hcp: 0
-            };
-        }
-    });
 
-    return parsed;
-  } catch { return [];
-}
-}
-function savePlayers(players){ localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
 function migratePlayersForFines(){
-  let migrated = false;
-  players.forEach(p => {
-    if (!p.rows) p.rows = {};
-
-    //FINES.forEach(f => {
-      //if (p.rows[f.id] === undefined) { p.rows[f.id] = (f.type === 'count' ? 0 : false); migrated = true; }
-    //});
-  //});
-
-    FINES.forEach(f => {
-      if (f.type === 'one') return; // NYT: ingen state for one
-      if (p.rows[f.id] === undefined) {
-        p.rows[f.id] = (f.type === 'count' ? 0 : false);
-        migrated = true;
+  let changed = false;
+  for (const player of players) {
+    if (!player.fines) { player.fines = {}; changed = true; }
+    const missing = FINES.filter(fine => !(fine.id in player.fines));
+    if (!missing.length) continue;
+    for (const f of missing) {
+      if (f.type === 'check') {
+        player.fines[f.id] = { checked: false, value: f.value };
+      } else {
+        player.fines[f.id] = { count: 0 };
       }
-    });
-
-  if (migrated) savePlayers(players);
-}
-)}
-
-// ---------------- Forretningslogik ----------------
-function getFineValue(id){ return Number(FINE_MAP[id]?.value ?? 0); }
-
-function createEmptyRows() {
-  const rows = {};
-  for (const fine of FINES) {
-    if (fine.type === 'one') continue; // NYT: ingen state for one
-    rows[fine.id] = fine.type === 'count' ? 0 : false;
+    }
+    changed = true;
   }
-  return rows;
+  if (changed) savePlayers(players);
 }
 
 
-//function createEmptyRows(){ const rows = {};
-  //for (const fine of FINES) rows[fine.id] = fine.type === 'count' ? 0 : false; return rows;
-//}
-
-function hasDuplicate(displayName, meta){
-  const key = normalizeKey(displayName);
-  if (players.some(p => normalizeKey(p.name) === key)) return true;
-  if (meta?.navn){
-    const nkey = normalizeKey(meta.navn);
-    if (players.some(p => normalizeKey(p.meta?.navn ?? p.name) === nkey)) return true;
-  }
-  return false;
-}
-function addPlayer(displayName, meta = null){
-  if (!displayName || !displayName.trim()) return;
-  if (players.length >= MAX_PLAYERS) { alert(`Du kan højst tilføje ${MAX_PLAYERS} spillere.`); return; }
-  if (hasDuplicate(displayName, meta)) { return;
-}
-  if (!FINES.length) { alert('Bøder indlæses første gang. Prøv igen om et øjeblik (eller gå online).'); return;
-}
-  const p = { id: uid(), name: displayName.trim(), rows: createEmptyRows(), score: { holes: Array(18).fill(0), hcp: 0 }, meta: meta ?? undefined };
-  
-  players.push(p);
-  activePlayerId = p.id;
-  savePlayers(players);
-  // Sørg for at bøder er klar, og tegn først derefter
-  ensureFinesLoaded(0, false).finally(() => render());
-
-}
-function setActivePlayer(playerId){ activePlayerId = playerId; renderTabs(); renderPanels(); }
-function removeAllPlayers(){ players = []; activePlayerId = null;
-savePlayers(players); render(); }
-
-// ---------------- Rendering ----------------
+// ---------------- Faner + paneler ----------------
 function render(){
-  resetBtn.classList.toggle('hidden', players.length === 0);
-  if (endRoundBtn) endRoundBtn.classList.toggle('hidden', players.length === 0);
-  document.body.classList.toggle('empty-state', players.length === 0);
-  if (menuBtn) menuBtn.classList.toggle('hidden', players.length > 0);
-  renderTabs(); renderPanels();
+  if (!players.length) {
+    tabsEl.innerHTML = '';
+    panelsEl.innerHTML = '';
+    addBtn.classList.remove('hidden');
+    resetBtn.classList.add('hidden');
+    endRoundBtn.classList.add('hidden');
+    document.body.classList.add('empty-state');
+    if (menuBtn) menuBtn.classList.remove('hidden');
+  } else {
+    document.body.classList.remove('empty-state');
+    addBtn.classList.remove('hidden');
+    resetBtn.classList.remove('hidden');
+    endRoundBtn.classList.remove('hidden');
+    if (menuBtn) menuBtn.classList.add('hidden');
+    renderTabs();
+    renderPanels();
+  }
 }
+
+
 function renderTabs(){
   tabsEl.innerHTML = '';
   players.forEach(p => {
-    const b = document.createElement('button');
-    b.className = 'tab-btn' + (p.id === activePlayerId ? ' active' : '');
-    b.textContent = p.name;
-    b.addEventListener('click', () => setActivePlayer(p.id));
-    tabsEl.appendChild(b);
-  });
-}
-function buildTableForPlayer(p){
-  const table = document.createElement('table'); table.className = 'table';
-  const thead = document.createElement('thead'); thead.innerHTML = `<tr><th>Bøder:</th><th class="count">Antal:</th><th class="amount">Beløb:</th></tr>`; table.appendChild(thead);
-  const tbody = document.createElement('tbody');
-  let sectionBreakInserted = false;
-  FINES.forEach((fine) => {
-    const tr = document.createElement('tr');
-    const tdLabel = document.createElement('td'); tdLabel.className = 'row-label'; tdLabel.textContent = fine.name;
-    const tdCount = document.createElement('td'); tdCount.className = 'count';
-    const tdAmt = document.createElement('td'); tdAmt.className = 'amount';
-    
-    if (fine.type === 'one') {
-      // PASSIV række: ingen kontrol i tdCount
-      tdCount.textContent = '-';
-
-    } else if (fine.type === 'count') {
-      const wrap = document.createElement('div'); wrap.className = 'counter';
-      const minus = document.createElement('button'); minus.className = 'iconbtn minus'; minus.textContent = '−';
-      const input = document.createElement('input');
-      // RETTET LINJE:
-      input.type = 'number'; input.min = '0'; input.step = '1'; input.className = 'num'; input.value = p.rows[fine.id] ?? 0;
-      const plus = document.createElement('button'); plus.className = 'iconbtn plus'; plus.textContent = '+';
-      wrap.append(minus, input, plus);
-      minus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)-1, 0, 9999);
-      p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
-      plus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)+1, 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
-      input.addEventListener('change', () => { input.value = clamp(parseInt(input.value ?? '0',10), 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
-      tdCount.appendChild(wrap);
-      
-      } else {
-        // Brug samme grid som tælleren, og placer checkbox i midterste kolonne
-        const wrap = document.createElement('div');
-        wrap.className = 'counter';               // 3 kolonner: [minus] [midt] [plus]
-
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = !!p.rows[fine.id];
-        cb.style.gridColumn = '2';                // midterste kolonne
-        cb.style.justifySelf = 'center';          // centrér i kolonnen
-
-        cb.addEventListener('change', () => {
-          p.rows[fine.id] = cb.checked; savePlayers(players); updateAmounts(table, p);
-        });
-
-        wrap.appendChild(cb);
-        tdCount.appendChild(wrap);
-      }
-      
-   /* } else {
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!p.rows[fine.id];
-      cb.addEventListener('change', () => { p.rows[fine.id] = cb.checked; savePlayers(players); updateAmounts(table, p); });
-      tdCount.appendChild(cb);
-    }*/
-
-    const amtInput = document.createElement('input');
-    amtInput.type = 'text'; amtInput.className = 'amount-field'; amtInput.readOnly = true; amtInput.value = '0'; amtInput.dataset.fineId = fine.id;
-    tdAmt.appendChild(amtInput);
-    tr.append(tdLabel, tdCount, tdAmt); tbody.appendChild(tr);
-    if (!sectionBreakInserted && fine.id === 'hole-in-one') {
-      const gap = document.createElement('tr');
-      gap.innerHTML = `<td class="section-gap"></td><td class="section-gap"></td><td class="section-gap"></td>`;
-      tbody.appendChild(gap);
-      sectionBreakInserted = true;
-    }
-  });
-
-  
-
-  const tfoot = document.createElement('tfoot');
-  const trTot = document.createElement('tr');
-  const tdLbl = document.createElement('td'); tdLbl.textContent = 'At betale:'; tdLbl.className = 'row-label';
-  const tdEmpty = document.createElement('td');
-  const tdTot = document.createElement('td');
-  const totalInput = document.createElement('input'); totalInput.type = 'text'; totalInput.readOnly = true; totalInput.className = 'amount-field total-field';
-  totalInput.value = '0'; totalInput.id = 'total-for-' + p.id;
-  tdTot.appendChild(totalInput);
-  trTot.append(tdLbl, tdEmpty, tdTot); tfoot.appendChild(trTot);
-
-  table.appendChild(tbody); table.appendChild(tfoot);
-  updateAmounts(table, p);
-  return table;
-}
-
-function renderScoreCard(player) {
-  // Hjælpere til cross-player navigation
-  function getPlayerIndex(id) {
-      return players.findIndex(p => p.id === id);
-  }
-
-  function focusSameHoleOnNextPlayer(currentPlayerId, holeIndex) {
-      const idx = getPlayerIndex(currentPlayerId);
-      if (idx === -1) return;
-
-      const nextIndex = (idx + 1) % players.length; // wrap around
-      const nextPlayer = players[nextIndex];
-
-      // Skift aktiv spiller i UI
-      activePlayerId = nextPlayer.id;
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn';
+    btn.textContent = p.name;
+    if (p.id === activePlayerId) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      activePlayerId = p.id;
       renderTabs();
       renderPanels();
+    });
+    tabsEl.appendChild(btn);
+  });
+}
 
-      // Giv panelet tid til at tegne
-      setTimeout(() => {
-        // 1) Skift aktiv subtab til "Score"
-        const scoreBtn = document.querySelector('.subtabs .subtab:nth-child(2)');
-        if (scoreBtn) {
-          scoreBtn.click(); // aktiver "Score"-fanen for den nye spiller
-        }
 
-        // 2) Find samme hul (1..18) og fokuser
-        const nextHoleInput = document.querySelector(
-          `.score-row:nth-child(${holeIndex + 1}) input`
-        );
-        if (nextHoleInput) {
-          nextHoleInput.focus();
-          nextHoleInput.select?.();
-        }
-      }, 30);
+function addPlayer(name){
+  const id = uid();
+  const fines = {};
+  for (const f of FINES) {
+    if (f.type === 'check') {
+      fines[f.id] = { checked: false, value: f.value };
+    } else {
+      fines[f.id] = { count: 0 };
+    }
   }
+  
+  // Initialiser score med closestToPin array for 18 huller
+  const newPlayer = { 
+    id, 
+    name, 
+    fines, 
+    score: { 
+      holes: Array(18).fill(0), 
+      hcp: 0, 
+      hcpOut: 0, 
+      hcpIn: 0,
+      closestToPin: Array(18).fill(false) // Ny property til tættest pinnen
+    } 
+  };
+  
+  players.push(newPlayer);
+  savePlayers(players);
+  activePlayerId = id;
+}
+
+
+function removeAllPlayers(){
+  players = [];
+  activePlayerId = null;
+  savePlayers(players);
+  render();
+}
+
+
+function buildTableForPlayer(player){
+  const tbl = document.createElement('table');
+  tbl.className = 'table';
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody');
+  const tfoot = document.createElement('tfoot');
+  tbl.append(thead, tbody, tfoot);
+  const header = document.createElement('tr');
+  const c1 = document.createElement('th');
+  c1.textContent = 'Bøde';
+  const c2 = document.createElement('th');
+  c2.className = 'amount';
+  c2.textContent = 'Beløb';
+  const c3 = document.createElement('th');
+  c3.className = 'count';
+  c3.textContent = 'Værdi';
+  header.append(c1, c2, c3);
+  thead.appendChild(header);
+  const grouped = {};
+  for (const fine of FINES) {
+    const isDerived = (fine.type === 'derived-check');
+    const srcId = isDerived ? (fine.source ?? '') : null;
+    if (srcId) {
+      if (!grouped[srcId]) grouped[srcId] = { main: null, derived: [] };
+      grouped[srcId].derived.push(fine);
+    } else {
+      if (!grouped[fine.id]) grouped[fine.id] = { main: null, derived: [] };
+      grouped[fine.id].main = fine;
+    }
+  }
+  for (const gid in grouped) {
+    const grp = grouped[gid];
+    const mainFine = grp.main;
+    if (!mainFine) continue;
+    const entry = player.fines?.[mainFine.id];
+    if (!entry) continue;
+    const row = document.createElement('tr');
+    const cellName = document.createElement('td');
+    cellName.className = 'row-label';
+    cellName.textContent = mainFine.name;
+    const cellAmount = document.createElement('td');
+    cellAmount.className = 'amount';
+    let total = 0;
+    if (mainFine.type === 'check') {
+      total = entry.checked ? (entry.value ?? mainFine.value) : 0;
+      cellAmount.textContent = `${total} kr`;
+    } else {
+      total = (entry.count ?? 0) * mainFine.value;
+      cellAmount.textContent = `${total} kr`;
+    }
+    for (const df of grp.derived) {
+      const entryD = player.fines?.[df.id];
+      if (!entryD) continue;
+      if (df.type === 'derived-check' && entryD.checked) {
+        total += (entryD.value ?? df.value);
+      }
+    }
+    if (grp.derived.length && mainFine.type === 'check') {
+      cellAmount.textContent = `${total} kr`;
+    }
+    const cellVal = document.createElement('td');
+    cellVal.className = 'count';
+    if (mainFine.type === 'check') {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'selbox';
+      cb.checked = entry.checked ?? false;
+      cb.addEventListener('change', () => {
+        entry.checked = cb.checked;
+        savePlayers(players);
+        renderPanels();
+      });
+      cellVal.appendChild(cb);
+      for (const df of grp.derived) {
+        if (df.type !== 'derived-check') continue;
+        const entryD = player.fines?.[df.id];
+        if (!entryD) continue;
+        const derived = document.createElement('div');
+        derived.style.marginTop = '.25rem';
+        const dcb = document.createElement('input');
+        dcb.type = 'checkbox';
+        dcb.className = 'selbox';
+        dcb.checked = entryD.checked ?? false;
+        dcb.disabled = !entry.checked;
+        dcb.addEventListener('change', () => {
+          entryD.checked = dcb.checked;
+          savePlayers(players);
+          renderPanels();
+        });
+        const dlbl = document.createElement('label');
+        dlbl.textContent = ` ${df.name}`;
+        dlbl.style.marginLeft = '.2rem';
+        dlbl.style.fontSize = '.85rem';
+        derived.append(dcb, dlbl);
+        cellVal.appendChild(derived);
+      }
+    } else {
+      const counter = document.createElement('div');
+      counter.className = 'counter';
+      const minus = document.createElement('button');
+      minus.className = 'iconbtn minus';
+      minus.textContent = '−';
+      minus.type = 'button';
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.textContent = (entry.count ?? 0).toString();
+      const plus = document.createElement('button');
+      plus.className = 'iconbtn';
+      plus.textContent = '+';
+      plus.type = 'button';
+      minus.addEventListener('click', () => {
+        entry.count = clamp((entry.count ?? 0) - 1, 0, 999);
+        savePlayers(players);
+        renderPanels();
+      });
+      plus.addEventListener('click', () => {
+        entry.count = clamp((entry.count ?? 0) + 1, 0, 999);
+        savePlayers(players);
+        renderPanels();
+      });
+      counter.append(minus, num, plus);
+      cellVal.appendChild(counter);
+    }
+    row.append(cellName, cellAmount, cellVal);
+    tbody.appendChild(row);
+  }
+  const footRow = document.createElement('tr');
+  const sumLabel = document.createElement('td');
+  sumLabel.textContent = 'I alt';
+  const sumVal = document.createElement('td');
+  sumVal.colSpan = 2;
+  let grandTotal = 0;
+  for (const fine of FINES) {
+    const entry = player.fines?.[fine.id];
+    if (!entry) continue;
+    if (fine.type === 'check' || fine.type === 'derived-check') {
+      if (entry.checked) {
+        grandTotal += (entry.value ?? fine.value);
+      }
+    } else {
+      grandTotal += (entry.count ?? 0) * fine.value;
+    }
+  }
+  sumVal.textContent = `${grandTotal} kr`;
+  footRow.append(sumLabel, sumVal);
+  tfoot.appendChild(footRow);
+  return tbl;
+}
+
+
+function renderScoreCard(player) {
+  // Sikr at alle score-felter findes
+  if (!player.score) {
+    player.score = { 
+      holes: Array(18).fill(0), 
+      hcp: 0, 
+      hcpOut: 0, 
+      hcpIn: 0,
+      closestToPin: Array(18).fill(false)
+    };
+  }
+  if (!player.score.holes) player.score.holes = Array(18).fill(0);
+  if (player.score.hcp === undefined) player.score.hcp = 0;
+  if (player.score.hcpOut === undefined) player.score.hcpOut = 0;
+  if (player.score.hcpIn === undefined) player.score.hcpIn = 0;
+  if (!player.score.closestToPin) player.score.closestToPin = Array(18).fill(false);
+
+
+  // Hop til samme hul hos næste spiller
+  function focusSameHoleOnNextPlayer(currentPlayerId, holeIndex) {
+    const curIdx = players.findIndex(p => p.id === currentPlayerId);
+    if (curIdx === -1) return;
+    const nextPlayer = players[(curIdx + 1) % players.length];
+    
+    // Skift aktiv spiller i UI
+    activePlayerId = nextPlayer.id;
+    renderTabs();
+    renderPanels();
+    
+    // Giv panelet tid til at tegne
+    setTimeout(() => {
+      // 1) Skift aktiv subtab til "Score"
+      const scoreBtn = document.querySelector('.subtabs .subtab:nth-child(2)');
+      if (scoreBtn) {
+        scoreBtn.click(); // aktiver "Score"-fanen for den nye spiller
+      }
+      
+      // 2) Find samme hul (1..18) og fokuser
+      const nextHoleInput = document.querySelector(
+        `.score-row:nth-child(${holeIndex + 1}) input`
+      );
+      if (nextHoleInput) {
+        nextHoleInput.focus();
+        nextHoleInput.select?.();
+      }
+    }, 30);
+  }
+  
   const wrap = document.createElement('div');
   wrap.className = 'scorecard';
 
-  // 18 huller i listeform
-  for (let i = 0; i < 18; i++) {
+
+  // Hjælpefunktion til at lave en score-row med checkbox
+  function createHoleRow(holeNum, holeIndex) {
     const row = document.createElement('div');
     row.className = 'score-row';
 
+
     const label = document.createElement('div');
     label.className = 'label';
-    label.textContent = `Hul ${i + 1}`;
+    label.textContent = `Hul ${holeNum}`;
+
 
     const inp = document.createElement('input');
-    
-    //inp.type = 'number';
     inp.type = 'text';
     inp.inputMode = 'numeric';
     inp.pattern = '[0-9]*';
     inp.enterKeyHint = 'Done';
-    
     inp.min = 0;
-
-    // Vis intet hvis værdien er 0
-    inp.value = player.score.holes[i] ? player.score.holes[i] : "";
+    inp.value = player.score.holes[holeIndex] ? player.score.holes[holeIndex] : "";
+    inp.setAttribute('data-player-id', player.id);
+    inp.setAttribute('data-hole', holeIndex);
     
-    // Når et hul er ændret → hop til samme hul hos næste spiller
     inp.addEventListener('change', () => {
-        player.score.holes[i] = Number(inp.value || 0);
-        savePlayers(players);
-        updateScoreTotals();
-      
-        /*
-        // Kun hop videre hvis der blev skrevet noget
-        if (inp.value !== "") {
-            focusSameHoleOnNextPlayer(player.id, i);
-        }
-        */
-      
+      player.score.holes[holeIndex] = Number(inp.value || 0);
+      savePlayers(players);
+      updateScoreTotals();
     });
 
-    // Android IME action 
+
     inp.addEventListener("beforeinput", (e) => {
       if (
         e.inputType === "insertLineBreak" ||
         e.inputType === "insertParagraph" ||
         (e.inputType.startsWith("insert") && e.data === null)
       ) {
-      e.preventDefault();
-                                                                                                                                                                                         focusSameHoleOnNextPlayer(player.id, i);
+        e.preventDefault();
+        focusSameHoleOnNextPlayer(player.id, holeIndex);
       }
     });
 
-    // Enter eller pil ned = hop til samme hul næste spiller
+
     inp.addEventListener('keydown', (e) => {
-        /*if (e.key === 'Enter' || e.key === 'ArrowDown') {
-            e.preventDefault();
-            focusSameHoleOnNextPlayer(player.id, i);
-        }*/
       const keysThatAdvance = ['Enter', 'ArrowDown', 'Next', 'Done', 'Tab'];
       if (keysThatAdvance.includes(e.key)) { 
         e.preventDefault();
-        focusSameHoleOnNextPlayer(player.id, i);
+        focusSameHoleOnNextPlayer(player.id, holeIndex);
       }
     });
 
-    row.append(label, inp);
+
+    // Checkbox for "Tættest pinnen"
+    const checkboxWrap = document.createElement('div');
+    checkboxWrap.style.display = 'flex';
+    checkboxWrap.style.flexDirection = 'column';
+    checkboxWrap.style.alignItems = 'center';
+    checkboxWrap.style.gap = '0.2rem';
+    
+    // Vis kun label på første hul - OVER checkboxen
+    if (holeIndex === 0) {
+      const checkLabel = document.createElement('span');
+      checkLabel.textContent = 'Tættest pinnen';
+      checkLabel.style.fontSize = '0.75rem';
+      checkLabel.style.color = 'var(--muted)';
+      checkLabel.style.fontWeight = '600';
+      checkLabel.style.whiteSpace = 'nowrap';
+      checkboxWrap.appendChild(checkLabel);
+    }
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'selbox';
+    checkbox.checked = player.score.closestToPin[holeIndex] || false;
+    checkbox.addEventListener('change', () => {
+      player.score.closestToPin[holeIndex] = checkbox.checked;
+      savePlayers(players);
+    });
+    
+    checkboxWrap.appendChild(checkbox);
+
+
+    row.append(label, inp, checkboxWrap);
     wrap.appendChild(row);
   }
 
-  // Tildelte slag (hcp)
-  const hcpRow = document.createElement('div');
-  hcpRow.className = 'score-row';
 
-  const hcpLab = document.createElement('div');
-  hcpLab.className = 'label';
-  hcpLab.textContent = 'Tildelte slag';
+  // Hul 1-9
+  for (let i = 0; i < 9; i++) {
+    createHoleRow(i + 1, i);
+  }
 
-  const hcpInput = document.createElement('input');
-  hcpInput.type = 'number';
-  hcpInput.min = 0;
-  //hcpInput.value = Number(player.score?.hcp ?? 0);
-  hcpInput.value = player.score?.hcp ? player.score?.hcp : "";
-  hcpInput.addEventListener('change', () => {
-    if (!player.score) player.score = { holes: Array(18).fill(0), hcp: 0 };
-    player.score.hcp = Number(hcpInput.value || 0);
+
+  // Brutto ud
+  const bruttoOutRow = document.createElement('div');
+  bruttoOutRow.className = 'score-row';
+  const bruttoOutLab = document.createElement('div');
+  bruttoOutLab.className = 'label';
+  bruttoOutLab.textContent = 'Brutto ud';
+  const bruttoOutVal = document.createElement('input');
+  bruttoOutVal.type = 'text';
+  bruttoOutVal.readOnly = true;
+  bruttoOutVal.id = `score-brutto-out-${player.id}`;
+  bruttoOutRow.append(bruttoOutLab, bruttoOutVal);
+  wrap.appendChild(bruttoOutRow);
+
+
+  // Tildelte slag ud
+  const hcpOutRow = document.createElement('div');
+  hcpOutRow.className = 'score-row';
+  const hcpOutLab = document.createElement('div');
+  hcpOutLab.className = 'label';
+  hcpOutLab.textContent = 'Tildelte slag ud';
+  const hcpOutInput = document.createElement('input');
+  hcpOutInput.type = 'number';
+  hcpOutInput.min = 0;
+  hcpOutInput.value = player.score?.hcpOut ? player.score?.hcpOut : "";
+  hcpOutInput.addEventListener('change', () => {
+    player.score.hcpOut = Number(hcpOutInput.value || 0);
     savePlayers(players);
     updateScoreTotals();
   });
+  hcpOutRow.append(hcpOutLab, hcpOutInput);
+  wrap.appendChild(hcpOutRow);
 
-  hcpRow.append(hcpLab, hcpInput);
-  wrap.appendChild(hcpRow);
 
-  // Total (sum) + Netto (sum - hcp)
-  const totRow = document.createElement('div');
-  totRow.className = 'score-row';
-  const totLab = document.createElement('div');
-  totLab.className = 'label';
-  totLab.textContent = 'Total';
-  const totVal = document.createElement('input');
-  totVal.type = 'text';
-  totVal.readOnly = true;
-  totVal.id = `score-total-${player.id}`;
-  totRow.append(totLab, totVal);
-  wrap.appendChild(totRow);
+  // Netto ud
+  const netOutRow = document.createElement('div');
+  netOutRow.className = 'score-row';
+  const netOutLab = document.createElement('div');
+  netOutLab.className = 'label';
+  netOutLab.textContent = 'Netto ud';
+  const netOutVal = document.createElement('input');
+  netOutVal.type = 'text';
+  netOutVal.readOnly = true;
+  netOutVal.id = `score-net-out-${player.id}`;
+  netOutRow.append(netOutLab, netOutVal);
+  wrap.appendChild(netOutRow);
 
-  const netRow = document.createElement('div');
-  netRow.className = 'score-row';
-  const netLab = document.createElement('div');
-  netLab.className = 'label';
-  netLab.textContent = 'Netto';
-  const netVal = document.createElement('input');
-  netVal.type = 'text';
-  netVal.readOnly = true;
-  netVal.id = `score-net-${player.id}`;
-  netRow.append(netLab, netVal);
-  wrap.appendChild(netRow);
+
+  // Hul 10-18
+  for (let i = 9; i < 18; i++) {
+    createHoleRow(i + 1, i);
+  }
+
+
+  // Brutto ind
+  const bruttoInRow = document.createElement('div');
+  bruttoInRow.className = 'score-row';
+  const bruttoInLab = document.createElement('div');
+  bruttoInLab.className = 'label';
+  bruttoInLab.textContent = 'Brutto ind';
+  const bruttoInVal = document.createElement('input');
+  bruttoInVal.type = 'text';
+  bruttoInVal.readOnly = true;
+  bruttoInVal.id = `score-brutto-in-${player.id}`;
+  bruttoInRow.append(bruttoInLab, bruttoInVal);
+  wrap.appendChild(bruttoInRow);
+
+
+  // Tildelte slag ind
+  const hcpInRow = document.createElement('div');
+  hcpInRow.className = 'score-row';
+  const hcpInLab = document.createElement('div');
+  hcpInLab.className = 'label';
+  hcpInLab.textContent = 'Tildelte slag ind';
+  const hcpInInput = document.createElement('input');
+  hcpInInput.type = 'number';
+  hcpInInput.min = 0;
+  hcpInInput.value = player.score?.hcpIn ? player.score?.hcpIn : "";
+  hcpInInput.addEventListener('change', () => {
+    player.score.hcpIn = Number(hcpInInput.value || 0);
+    savePlayers(players);
+    updateScoreTotals();
+  });
+  hcpInRow.append(hcpInLab, hcpInInput);
+  wrap.appendChild(hcpInRow);
+
+
+  // Netto ind
+  const netInRow = document.createElement('div');
+  netInRow.className = 'score-row';
+  const netInLab = document.createElement('div');
+  netInLab.className = 'label';
+  netInLab.textContent = 'Netto ind';
+  const netInVal = document.createElement('input');
+  netInVal.type = 'text';
+  netInVal.readOnly = true;
+  netInVal.id = `score-net-in-${player.id}`;
+  netInRow.append(netInLab, netInVal);
+  wrap.appendChild(netInRow);
+
+
+  // Brutto total
+  const bruttoTotalRow = document.createElement('div');
+  bruttoTotalRow.className = 'score-row';
+  const bruttoTotalLab = document.createElement('div');
+  bruttoTotalLab.className = 'label';
+  bruttoTotalLab.textContent = 'Brutto total';
+  const bruttoTotalVal = document.createElement('input');
+  bruttoTotalVal.type = 'text';
+  bruttoTotalVal.readOnly = true;
+  bruttoTotalVal.id = `score-brutto-total-${player.id}`;
+  bruttoTotalRow.append(bruttoTotalLab, bruttoTotalVal);
+  wrap.appendChild(bruttoTotalRow);
+
+
+  // Tildelte slag total (fjernet)
+  const hcpTotalRow = document.createElement('div');
+  hcpTotalRow.className = 'score-row';
+  const hcpTotalLab = document.createElement('div');
+  hcpTotalLab.className = 'label';
+  hcpTotalLab.textContent = 'Tildelte slag total';
+  const hcpTotalVal = document.createElement('input');
+  hcpTotalVal.type = 'text';
+  hcpTotalVal.readOnly = true;
+  hcpTotalVal.id = `score-hcp-total-${player.id}`;
+  hcpTotalRow.append(hcpTotalLab, hcpTotalVal);
+  wrap.appendChild(hcpTotalRow);
+
+
+  // Netto total
+  const netTotalRow = document.createElement('div');
+  netTotalRow.className = 'score-row';
+  const netTotalLab = document.createElement('div');
+  netTotalLab.className = 'label';
+  netTotalLab.textContent = 'Netto total';
+  const netTotalVal = document.createElement('input');
+  netTotalVal.type = 'text';
+  netTotalVal.readOnly = true;
+  netTotalVal.id = `score-net-total-${player.id}`;
+  netTotalRow.append(netTotalLab, netTotalVal);
+  wrap.appendChild(netTotalRow);
+
 
   function updateScoreTotals() {
-    const total = (player.score?.holes ?? []).reduce((a, b) => a + Number(b || 0), 0);
-    const net = total - Number(player.score?.hcp || 0);
-    totVal.value = total;
-    netVal.value = net;
+    // Beregn brutto ud (hul 1-9)
+    const bruttoOut = player.score.holes.slice(0, 9).reduce((a, b) => a + Number(b || 0), 0);
+    bruttoOutVal.value = bruttoOut > 0 ? bruttoOut : "";
+    
+    // Beregn brutto ind (hul 10-18)
+    const bruttoIn = player.score.holes.slice(9, 18).reduce((a, b) => a + Number(b || 0), 0);
+    bruttoInVal.value = bruttoIn > 0 ? bruttoIn : "";
+    
+    // Beregn brutto total
+    const bruttoTotal = bruttoOut + bruttoIn;
+    bruttoTotalVal.value = bruttoTotal > 0 ? bruttoTotal : "";
+    
+    // Beregn netto ud
+    const hcpOut = Number(player.score?.hcpOut || 0);
+    const netOut = bruttoOut - hcpOut;
+    netOutVal.value = (bruttoOut > 0 || hcpOut > 0) ? netOut : "";
+    
+    // Beregn netto ind
+    const hcpIn = Number(player.score?.hcpIn || 0);
+    const netIn = bruttoIn - hcpIn;
+    netInVal.value = (bruttoIn > 0 || hcpIn > 0) ? netIn : "";
+    
+    // Beregn tildelte slag total
+    const hcpTotal = hcpOut + hcpIn;
+    hcpTotalVal.value = hcpTotal > 0 ? hcpTotal : "";
+    
+    // Beregn netto total
+    const netTotal = bruttoTotal - hcpTotal;
+    netTotalVal.value = (bruttoTotal > 0 || hcpTotal > 0) ? netTotal : "";
   }
+
 
   updateScoreTotals();
   return wrap;
 }
 
+
 function renderPanels() {
     panelsEl.innerHTML = '';
     if (!players.length) return;
 
+
     const p = players.find(x => x.id === activePlayerId) ?? players[0];
+
 
     const panel = document.createElement('section');
     panel.className = 'panel';
+
 
     // --- SUBTABS ---
     const tabs = document.createElement('div');
     tabs.className = 'subtabs';
 
+
     const btnF = document.createElement('button');
     btnF.className = 'subtab active';
     btnF.textContent = 'Bøder';
+
 
     const btnS = document.createElement('button');
     btnS.className = 'subtab';
     btnS.textContent = 'Score';
 
+
     tabs.append(btnF, btnS);
     panel.appendChild(tabs);
+
 
     // --- CONTENT AREA ---
     const content = document.createElement('div');
     content.className = 'subcontent';
     panel.appendChild(content);
 
+
     const showFines = () => {
     btnF.classList.add('active');
     btnS.classList.remove('active');
     content.innerHTML = '';
+
 
     // Hvis bøder ikke er indlæst endnu, vis "Indlæser..." og prøv igen
     if (!Array.isArray(FINES) || FINES.length === 0) {
       const loading = document.createElement('div');
       loading.textContent = 'Indlæser bøder…';
       content.appendChild(loading);
+
 
       ensureFinesLoaded(0, false).then(() => {
         // Tegn igen, når bøderne er kommet
@@ -881,8 +983,10 @@ function renderPanels() {
       return;
     }
 
+
     content.appendChild(buildTableForPlayer(p));
   };
+
 
     const showScore = () => {
         btnS.classList.add('active');
@@ -891,324 +995,278 @@ function renderPanels() {
         content.appendChild(renderScoreCard(p));
     };
 
+
     btnF.addEventListener('click', showFines);
     btnS.addEventListener('click', showScore);
+
 
     // Standardvisning
     showFines();
 
+
     panelsEl.appendChild(panel);
 }
 
-function calcAmount(player, fine) {
-    if (!fine) return 0;
 
-    if (fine.type === 'count') {
-        const n = Number(player.rows[fine.id] ?? 0);
-        const v = getFineValue(fine.id);
-        return n * v;
-    }
-
-    if (fine.type === 'check') {
-        const v = getFineValue(fine.id);
-        return player.rows[fine.id] ? v : 0;
-    }
-
-    if (fine.type === 'derived-check') {
-        if (!player.rows[fine.id]) return 0;
-        const src = FINE_MAP[fine.source];
-        return calcAmount(player, src);
-    }
-
-    if (fine.type === 'one') {
-        if (player.rows['afbud']) return 0;
-        return getFineValue(fine.id);
-    }
-
-    return 0;
-}
-
-function updateAmounts(table, player){
-  let total = 0;
-  for (const fine of FINES){
-    const amtInput = table.querySelector(`input[data-fine-id="${fine.id}"]`);
-    if (!amtInput) continue;
-    const amount = calcAmount(player, fine);
-    amtInput.value = amount.toString();
-    total += amount;
-  }
-  const totalInput = table.querySelector('#total-for-' + player.id);
-  if (totalInput) totalInput.value = total.toString();
-}
-
-// ---------------- Afslut runde: data & send ----------------
-function buildFinesForPlayer(player){
-  const finesOut = [];
-  for (const fine of FINES) {
-    
-    let count;
-    if (fine.type === 'count') {
-      const val = player.rows[fine.id];
-      count = Number(val ?? 0);
-    } else if (fine.type === 'one') {
-      count = player.rows['afbud'] ? 0 : 1;
-    } else {
-      const val = player.rows[fine.id];
-      count = (val ? 1 : 0);
-    }
-    const amount = calcAmount(player, fine);
-    finesOut.push({ id: fine.id, name: fine.name, count, amount })
-
-    //const val = player.rows[fine.id];
-    //const count = (fine.type === 'count') ? Number(val ?? 0) : (val ? 1 : 0);
-    //const amount = calcAmount(player, fine);
-    //finesOut.push({ id: fine.id, name: fine.name, count, amount });
-
-  }
-  return finesOut;
-}
-function buildPayloadForPlayer(player, courseName){
-  const timestamp = new Date().toISOString();
-  return {
-    secret: SECRET_KEY,
-    sheetTab: player.name,
-    tableName: `${courseName} (${new Date().toLocaleString('da-DK')})`,
-    fines: buildFinesForPlayer(player),
-    meta: { courseName, player: player.name, at: timestamp, app: 'FGL_PWA_v18' }
-  };
-}
-async function sendRoundData(payload){
-  const resp = await fetch(SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    redirect: 'follow',
-    body: JSON.stringify(payload)
-  });
-  const text = await resp.text();
-  let data;
-  try { data = JSON.parse(text);
-}
-  catch { throw new Error('Ugyldigt svar fra serveren (ikke JSON)'); }
-  if (!resp.ok) throw new Error(`Serverfejl: ${resp.status}`);
-  if (!data || data.status !== 'ok') throw new Error(data?.message || 'Server svarede uden status ok');
-  return data;
-}
-function queuePush(item){
-  if (!ENABLE_OFFLINE_QUEUE) return;
-  try { const q = JSON.parse(localStorage.getItem(ROUND_QUEUE_KEY) || '[]'); q.push(item); localStorage.setItem(ROUND_QUEUE_KEY, JSON.stringify(q));
-} catch {}
-}
-function queueDrain(){
-  if (!ENABLE_OFFLINE_QUEUE) return;
-  try {
-    const q = JSON.parse(localStorage.getItem(ROUND_QUEUE_KEY) || '[]');
-    if (!q.length) return;
-    (async () => {
-      const remain = [];
-      for (const item of q) {
-        try { await sendRoundData(item); }
-        catch { remain.push(item); }
-      }
-      localStorage.setItem(ROUND_QUEUE_KEY, JSON.stringify(remain));
-      if (q.length !== remain.length) showToast('Afventende runder sendt');
-    })();
-  } catch {}
-}
-function fullResetLikeButton(){ localStorage.removeItem(STORAGE_KEY); removeAllPlayers(); }
-
-async function finishRoundFlow(courseName){
-  if (!players.length) return;
-  showToast('Indsender...');
-  const errors = [];
-  for (const p of players) {
-    const payload = buildPayloadForPlayer(p, courseName);
-    if (!navigator.onLine && ENABLE_OFFLINE_QUEUE) { queuePush(payload);
-continue; }
-    try { await sendRoundData(payload); }
-    catch (err) {
-      console.error('Send fejl for', p.name, err);
-      errors.push(`${p.name}: ${err.message || err}`);
-      if (ENABLE_OFFLINE_QUEUE) queuePush(payload);
-    }
-  }
-  if (errors.length === 0) { showToast('Runde afsluttet');
-}
-  else { showToast('Nogle indsendelser blev køet til senere'); }
-  if (AUTO_RESET_AFTER_SEND) fullResetLikeButton();
-}
-
-// ---------------- Picker (Tilføj spiller) ----------------
-function remainingSlots(){ return Math.max(0, MAX_PLAYERS - players.length); }
+// ---------------- Picker (spillerliste) ----------------
 function openPicker(){
   document.body.classList.add('modal-open');
   pickerOverlay.classList.remove('hidden');
+  renderPickerList(true);
+  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
+    .then(({ changed, list }) => {
+      sheetPlayers = list;
+      sheetLoaded = true;
+      renderPickerList(false);
+    })
+    .catch(err => {
+      sheetLoadError = err;
+      sheetLoaded = false;
+      renderPickerList(false);
+    });
+}
+function closePicker(){
+  pickerOverlay.classList.add('hidden');
+  document.body.classList.remove('modal-open');
   pickerSelected = new Set();
-  updatePickerConfirm();
-
-  const cached = loadSheetCache();
-  if (cached.list && cached.list.length){ sheetPlayers = cached.list; sheetLoaded = true; renderPickerList(false);
-}
-  else { renderPickerList(true); }
-
-  ensureFinesLoaded(0).then(()=>{});
-  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(()=> renderPickerList(false)).catch(()=> renderPickerList(false));
-}
-function closePicker(){ pickerOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); pickerSelected = new Set();
 }
 function updatePickerConfirm(){
   const count = pickerSelected.size;
-  pickerConfirm.textContent = count>0 ? `OK (${count})` : 'OK';
-  pickerConfirm.disabled = (count === 0) || (remainingSlots() === 0);
+  pickerConfirm.textContent = count > 0 ? `OK (${count})` : 'OK';
+  pickerConfirm.disabled = (count === 0);
 }
 function renderPickerList(isLoading = false){
   pickerList.innerHTML = '';
-  if (isLoading) { pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Indlæser spillere…</span></div>`; return;
-}
-  if (sheetLoadError) { pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Kunne ikke hente fra arket: ${sheetLoadError.message}</span></div>`; return;
-}
-
-  const { meta } = loadSheetCache();
-  if (meta.updatedAt){
-    const info = document.createElement('div'); info.className = 'picker-item';
-    info.style.opacity = '0.7';
-    const ts = new Date(meta.updatedAt).toLocaleString('da-DK');
-    info.innerHTML = `<span class="primary-label">Sidst opdateret: ${ts}</span>`;
-    pickerList.appendChild(info);
+  if (isLoading) {
+    pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Indlæser spillere…</span></div>`;
+    return;
   }
-
+  if (sheetLoadError) {
+    pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">Kunne ikke hente fra arket: ${sheetLoadError.message}</span></div>`;
+    return;
+  }
   const items = sheetPlayers;
   if (items.length === 0){
     const hasCache = (loadSheetCache().list ?? []).length > 0;
-    const msg = (!hasCache && !navigator.onLine) ? 'Ingen cache tilgængelig – gå online første gang for at hente spillerlisten.'
-: 'Ingen matches';
+    const msg = (!hasCache && !navigator.onLine)
+      ? 'Ingen cache tilgængelig – gå online første gang for at hente spillerlisten.'
+      : 'Ingen spillere fundet';
     pickerList.innerHTML = `<div class="picker-item"><span class="primary-label">${msg}</span></div>`;
     return;
   }
-
-  const existingKeys = new Set([
-    ...players.map(p => (p.name ?? '').toLowerCase()),
-    ...players.map(p => ((p.meta?.navn) ?? '').toLowerCase()),
-  ]);
   const frag = document.createDocumentFragment();
   items.forEach(item => {
-    const row = document.createElement('div'); row.className = 'picker-item'; row.setAttribute('role', 'option');
-
+    const key = `${item.navn}|${item.faneNavn}`;
+    if (!key) return;
+    const existing = players.find(p => p.name === item.navn);
+    const disabled = !!existing || (players.length >= MAX_PLAYERS && !pickerSelected.has(key));
+    const row = document.createElement('div');
+    row.className = 'picker-item';
+    row.setAttribute('role', 'option');
+    if (disabled) row.classList.add('disabled');
     const left = document.createElement('div');
-    const primary = document.createElement('div'); primary.className = 'primary-label'; primary.textContent = item.navn;
+    const primary = document.createElement('div');
+    primary.className = 'primary-label';
+    primary.textContent = item.navn;
     left.append(primary);
-
-    const key = `${item.faneNavn}\n${item.navn}`;
-    const exists = existingKeys.has((item.faneNavn ?? '').toLowerCase()) || existingKeys.has((item.navn ?? '').toLowerCase());
-
     const right = document.createElement('div');
-    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'selbox'; cb.checked = pickerSelected.has(key);
-
-    const noRoom = (remainingSlots() - (pickerSelected.has(key) ? (pickerSelected.size-1) : pickerSelected.size)) <= 0;
-    cb.disabled = exists || noRoom;
-
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'selbox';
+    cb.checked = pickerSelected.has(key);
+    cb.disabled = disabled && !cb.checked;
     function toggle(){
-      if (exists) return;
-      const selectedAlready = pickerSelected.has(key);
-      if (!selectedAlready && pickerSelected.size >= remainingSlots()) { return;
-}
-      if (selectedAlready) pickerSelected.delete(key); else pickerSelected.add(key);
+      if (cb.disabled) return;
+      if (pickerSelected.has(key)) {
+        pickerSelected.delete(key);
+      } else {
+        pickerSelected.add(key);
+      }
       cb.checked = pickerSelected.has(key);
       updatePickerConfirm();
-      renderPickerList();
+      renderPickerList(false);
     }
-
     row.addEventListener('click', (e) => { if (e.target !== cb) toggle(); });
     cb.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
-
-    if (exists) row.classList.add('disabled');
     right.appendChild(cb);
     row.append(left, right);
     frag.appendChild(row);
   });
   pickerList.appendChild(frag);
 }
-
-// Confirm-knap i picker
-pickerConfirm.addEventListener('click', async () => {
-  await ensureFinesLoaded(0, false);
-  if (!FINES.length) { alert('Bøder kunne ikke hentes første gang. Gå online og prøv igen.'); return; }
-  const selectedKeys = Array.from(pickerSelected);
-  if (selectedKeys.length === 0) return;
-
-  const items = sheetPlayers;
-  let slots = remainingSlots();
-  for (const it of items){
-    const key = `${it.faneNavn}\n${it.navn}`;
-    if (!selectedKeys.includes(key)) continue;
-    if (slots <= 0) break;
-    const display = (it.faneNavn && String(it.faneNavn).trim()) ? it.faneNavn : it.navn;
-    if (!hasDuplicate(display, { navn: it.navn })) { addPlayer(display, { navn: it.navn }); slots--; }
-  }
+pickerConfirm.addEventListener('click', () => {
+  if (pickerSelected.size === 0) return;
+  pickerSelected.forEach(key => {
+    const parts = key.split('|');
+    const navn = parts[0];
+    const existing = players.find(p => p.name === navn);
+    if (!existing) addPlayer(navn);
+  });
   closePicker();
+  render();
 });
 
-// ---------------- MENU: Åbn/luk ----------------
-function openMenu() {
+
+// ------------------------------------------------
+// Afslut runde
+// ------------------------------------------------
+async function finishRoundFlow(courseName){
+  const roundData = { course: courseName, date: new Date().toISOString(), players: [] };
+  for (const p of players){
+    const bruttoOut = (p.score?.holes ?? []).slice(0,9).reduce((a,b)=>a+Number(b||0),0);
+    const bruttoIn = (p.score?.holes ?? []).slice(9,18).reduce((a,b)=>a+Number(b||0),0);
+    const bruttoTotal = bruttoOut + bruttoIn;
+    
+    const hcpOut = Number(p.score?.hcpOut || 0);
+    const hcpIn = Number(p.score?.hcpIn || 0);
+    const hcpTotal = hcpOut + hcpIn;
+    
+    const netOut = bruttoOut - hcpOut;
+    const netIn = bruttoIn - hcpIn;
+    const netTotal = bruttoTotal - hcpTotal;
+    
+    let finesTotal = 0;
+    for (const fine of FINES){
+      const entry = p.fines?.[fine.id];
+      if (!entry) continue;
+      if (fine.type === 'check' || fine.type === 'derived-check'){
+        if (entry.checked) finesTotal += (entry.value ?? fine.value);
+      } else {
+        finesTotal += (entry.count ?? 0) * fine.value;
+      }
+    }
+    roundData.players.push({
+      name: p.name,
+      bruttoOut,
+      bruttoIn,
+      bruttoTotal,
+      hcpOut,
+      hcpIn,
+      hcpTotal,
+      netOut,
+      netIn,
+      netTotal,
+      finesTotal,
+      holes: p.score?.holes ?? [],
+      closestToPin: p.score?.closestToPin ?? []
+    });
+  }
+  const success = await sendToBackend(roundData);
+  if (success && AUTO_RESET_AFTER_SEND) {
+    localStorage.removeItem(STORAGE_KEY);
+    removeAllPlayers();
+    showToast('Runde sendt & nulstillet!');
+  } else if (success) {
+    showToast('Runde sendt!');
+  } else {
+    showToast('Kunne ikke sende data, gemt i kø');
+  }
+}
+async function sendToBackend(roundData){
+  try {
+    const resp = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: SECRET_KEY, ...roundData })
+    });
+    if (resp.ok) { if (ENABLE_OFFLINE_QUEUE) queueRemove(roundData); return true; }
+    else throw new Error('HTTP error');
+  } catch {
+    if (ENABLE_OFFLINE_QUEUE) queueAdd(roundData);
+    return false;
+  }
+}
+function queueAdd(data){
+  try {
+    const arr = JSON.parse(localStorage.getItem(ROUND_QUEUE_KEY) ?? '[]');
+    arr.push(data);
+    localStorage.setItem(ROUND_QUEUE_KEY, JSON.stringify(arr));
+  } catch {}
+}
+function queueRemove(data){
+  try {
+    let arr = JSON.parse(localStorage.getItem(ROUND_QUEUE_KEY) ?? '[]');
+    arr = arr.filter(x => JSON.stringify(x) !== JSON.stringify(data));
+    localStorage.setItem(ROUND_QUEUE_KEY, JSON.stringify(arr));
+  } catch {}
+}
+async function queueDrain(){
+  if (!ENABLE_OFFLINE_QUEUE) return;
+  try {
+    const arr = JSON.parse(localStorage.getItem(ROUND_QUEUE_KEY) ?? '[]');
+    if (!arr.length) return;
+    for (const data of arr){
+      const ok = await sendToBackend(data);
+      if (ok) showToast('Kødata sendt');
+    }
+  } catch {}
+}
+
+
+// ------------------------------------------------
+// Menu (inkl. viewer for faner)
+// ------------------------------------------------
+function openMenu(){
+  ensureSheetPlayersLoaded(MIN_REFRESH_INTERVAL_MS).then(() => renderMenu());
   document.body.classList.add('modal-open');
   menuOverlay.classList.remove('hidden');
-  // 1) Brug cache straks
-  const cached = loadSheetCache();
-  if (cached.list && cached.list.length) { sheetPlayers = cached.list;
-  sheetLoaded = true; }
-  renderMenuList();
-
-  // 2) Forsøg frisk netværks-hentning – tegn igen uanset hash
-  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
-    .finally(() => {
-      const c2 = loadSheetCache();
-      if (c2.list && c2.list.length) sheetPlayers = c2.list;
-      renderMenuList();
-    });
 }
-function closeMenu() {
+function closeMenu(){
   menuOverlay.classList.add('hidden');
   document.body.classList.remove('modal-open');
 }
-function renderMenuList() {
+function renderMenu(){
+  menuList.innerHTML = '';
   const tabs = getAvailableTabsFromPlayers();
-  menuList.innerHTML = ''; // Nulstil listen
-
-  // Overskrift for bødekort
-  const headingFines = document.createElement('div');
-  headingFines.className = 'menu-heading';
-  headingFines.textContent = 'Bøde Kort:';
-  menuList.appendChild(headingFines);
-
-  if (!tabs.length) {
+  
+  // Heading: Faneoversigter
+  const heading1 = document.createElement('div');
+  heading1.className = 'menu-heading';
+  heading1.textContent = 'Faneoversigter';
+  menuList.appendChild(heading1);
+  
+  for (const tabName of tabs){
     const item = document.createElement('div');
     item.className = 'menu-item';
-    item.innerHTML = `<span class="name">Ingen faner fundet</span>`;
-    menuList.appendChild(item);
-  } else {
-    const frag = document.createDocumentFragment();
-    tabs.forEach(name => {
-      const row = document.createElement('div');
-      row.className = 'menu-item';
-      const left = document.createElement('div');
-      left.className = 'name';
-      left.textContent = name;
-      row.append(left);
-      row.addEventListener('click', () => { closeMenu(); openSheetViewer(name); });
-      frag.appendChild(row);
+    const left = document.createElement('div');
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = tabName;
+    left.appendChild(nameEl);
+    const right = document.createElement('div');
+    right.textContent = '›';
+    right.style.fontSize = '1.3rem';
+    right.style.color = 'var(--muted)';
+    item.append(left, right);
+    item.addEventListener('click', () => {
+      closeMenu();
+      showSheetViewer(tabName);
     });
-    menuList.appendChild(frag);
+    menuList.appendChild(item);
   }
-
-  // Overskrift for lodtrækning
-  const headingLottery = document.createElement('div');
-  headingLottery.className = 'menu-heading';
-  headingLottery.textContent = 'Lodtrækning:';
-  menuList.appendChild(headingLottery);
-
-  // Menupunkt for lodtrækning
+  
+  // Heading: Funktioner
+  const heading2 = document.createElement('div');
+  heading2.className = 'menu-heading';
+  heading2.textContent = 'Funktioner';
+  menuList.appendChild(heading2);
+  
+  // Lodtrækning
   const lotteryItem = document.createElement('div');
   lotteryItem.className = 'menu-item';
-  lotteryItem.innerHTML = '<div class="name">Vælg spiller</div>';
+  const lotteryLeft = document.createElement('div');
+  const lotteryName = document.createElement('div');
+  lotteryName.className = 'name';
+  lotteryName.textContent = 'Lodtrækning';
+  const lotteryHint = document.createElement('div');
+  lotteryHint.className = 'hint';
+  lotteryHint.textContent = 'Tilfældig gruppeinddeling';
+  lotteryLeft.append(lotteryName, lotteryHint);
+  const lotteryRight = document.createElement('div');
+  lotteryRight.textContent = '›';
+  lotteryRight.style.fontSize = '1.3rem';
+  lotteryRight.style.color = 'var(--muted)';
+  lotteryItem.append(lotteryLeft, lotteryRight);
   lotteryItem.addEventListener('click', () => {
     closeMenu();
     openLotteryPicker();
@@ -1217,56 +1275,106 @@ function renderMenuList() {
 }
 
 
-// ---------------- Lodtrækning: Picker, logik og resultat ----------------
-
-/*function openLotteryPicker() {
-  document.body.classList.add('modal-open');
-  lotteryPickerOverlay.classList.remove('hidden');
-  lotteryPickerSelected = new Set();
-  updateLotteryPickerConfirm();
-
-  const cached = loadSheetCache();
-  if (cached.list && cached.list.length){
-    sheetPlayers = cached.list;
-    sheetLoaded = true;
-    renderLotteryPickerList(false);
+function showSheetViewer(tabName){
+  sheetViewerTitle.textContent = tabName;
+  sheetViewer.classList.remove('hidden');
+  sheetViewerContent.innerHTML = '<p>Indlæser...</p>';
+  fetchSheetDataForTab(tabName)
+    .then(table => {
+      sheetViewerContent.innerHTML = '';
+      sheetViewerContent.appendChild(table);
+    })
+    .catch(err => {
+      sheetViewerContent.innerHTML = `<p>Fejl: ${err.message}</p>`;
+    });
+}
+sheetBack.addEventListener('click', () => {
+  sheetViewer.classList.add('hidden');
+});
+async function fetchSheetDataForTab(tabName){
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+  const url = `${base}&sheet=${encodeURIComponent(tabName)}`;
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const text = await resp.text();
+  const json = parseGViz(text);
+  if (!json.table) throw new Error('Intet table-objekt');
+  const colCount = (json.table.cols ?? []).length;
+  const rows = json.table.rows ?? [];
+  const table = document.createElement('table');
+  const isTotal = tabName.toLowerCase() === 'total';
+  if (isTotal) {
+    table.className = 'sheet-table sticky-first-col sticky-top-rows';
   } else {
-    renderLotteryPickerList(true);
+    table.className = 'sheet-table';
   }
-  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
-    .then(()=> renderLotteryPickerList(false))
-    .catch(()=> renderLotteryPickerList(false));
-}*/
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody');
+  table.append(thead, tbody);
+  if (rows.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.textContent = 'Ingen data fundet';
+    td.colSpan = colCount;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return table;
+  }
+  // Header-row: Row 1
+  const headerRow = rows[0];
+  const htr = document.createElement('tr');
+  for (let c = 0; c < colCount; c++){
+    const th = document.createElement('th');
+    const cellVal = headerRow.c?.[c]?.v ?? '';
+    th.textContent = cellVal.toString();
+    htr.appendChild(th);
+  }
+  thead.appendChild(htr);
+  // Data-rows
+  for (let r = 1; r < rows.length; r++){
+    const tr = document.createElement('tr');
+    for (let c = 0; c < colCount; c++){
+      const td = document.createElement('td');
+      const cellVal = rows[r].c?.[c]?.v ?? '';
+      td.textContent = cellVal.toString();
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  return table;
+}
 
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+
+// ------------------------------------------------
+// Lodtrækning
+// ------------------------------------------------
 function openLotteryPicker() {
   document.body.classList.add('modal-open');
   lotteryPickerOverlay.classList.remove('hidden');
-
-  const cached = loadSheetCache();
-  if (cached.list && cached.list.length){
-    sheetPlayers = cached.list;
-    sheetLoaded = true;
-
-    //  Vælg spillere her – fx alle spillere
-    lotteryPickerSelected = new Set(sheetPlayers.map(p => p.navn));
-
-    updateLotteryPickerConfirm();
-    renderLotteryPickerList(false);
-  } else {
-    lotteryPickerSelected = new Set(); // Tom hvis ingen cache
-    updateLotteryPickerConfirm();
-    renderLotteryPickerList(true);
-  }
-
+  renderLotteryPickerList(true);
+  
   refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
-    .then(() => {
-      // Vælg spillere igen efter opdatering
-      lotteryPickerSelected = new Set(sheetPlayers.map(p => p.navn));
-      updateLotteryPickerConfirm();
+    .then(({ changed, list }) => {
+      sheetPlayers = list;
+      sheetLoaded = true;
+      renderLotteryPickerList(false);
+    })
+    .catch(err => {
+      sheetLoadError = err;
+      sheetLoaded = false;
       renderLotteryPickerList(false);
     })
     .catch(() => renderLotteryPickerList(false));
 }
+
+
 
 
 function closeLotteryPicker() {
@@ -1275,11 +1383,13 @@ function closeLotteryPicker() {
   lotteryPickerSelected = new Set();
 }
 
+
 function updateLotteryPickerConfirm() {
   const count = lotteryPickerSelected.size;
   lotteryPickerConfirm.textContent = count > 0 ? `OK (${count})` : 'OK';
   lotteryPickerConfirm.disabled = (count === 0);
 }
+
 
 function renderLotteryPickerList(isLoading = false) {
   lotteryPickerList.innerHTML = '';
@@ -1292,6 +1402,7 @@ function renderLotteryPickerList(isLoading = false) {
     return;
   }
 
+
   const items = sheetPlayers;
   if (items.length === 0){
     const hasCache = (loadSheetCache().list ?? []).length > 0;
@@ -1300,14 +1411,17 @@ function renderLotteryPickerList(isLoading = false) {
     return;
   }
 
+
   const frag = document.createDocumentFragment();
   items.forEach(item => {
     const key = item.navn; // Brug unikt spillernavn som nøgle
     if (!key) return;
 
+
     const row = document.createElement('div');
     row.className = 'picker-item';
     row.setAttribute('role', 'option');
+
 
     const left = document.createElement('div');
     const primary = document.createElement('div');
@@ -1315,11 +1429,13 @@ function renderLotteryPickerList(isLoading = false) {
     primary.textContent = item.navn;
     left.append(primary);
 
+
     const right = document.createElement('div');
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'selbox';
     cb.checked = lotteryPickerSelected.has(key);
+
 
     function toggle() {
       if (lotteryPickerSelected.has(key)) {
@@ -1331,8 +1447,10 @@ function renderLotteryPickerList(isLoading = false) {
       updateLotteryPickerConfirm();
     }
 
+
     row.addEventListener('click', (e) => { if (e.target !== cb) toggle(); });
     cb.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+
 
     right.appendChild(cb);
     row.append(left, right);
@@ -1341,9 +1459,11 @@ function renderLotteryPickerList(isLoading = false) {
   lotteryPickerList.appendChild(frag);
 }
 
+
 function runLottery() {
   const selectedPlayers = Array.from(lotteryPickerSelected);
   if (selectedPlayers.length === 0) return;
+
 
   // 1. Bland spillere (Fisher-Yates shuffle)
   for (let i = selectedPlayers.length - 1; i > 0; i--) {
@@ -1351,9 +1471,11 @@ function runLottery() {
     [selectedPlayers[i], selectedPlayers[j]] = [selectedPlayers[j], selectedPlayers[i]];
   }
 
+
   // 2. Bestem antal grupper
   const numPlayers = selectedPlayers.length;
   const numGroups = numPlayers >= 9 ? 3 : 2;
+
 
   // 3. Fordel spillere i grupper
   const groups = Array.from({ length: numGroups }, () => []);
@@ -1361,9 +1483,11 @@ function runLottery() {
     groups[i % numGroups].push(selectedPlayers[i]);
   }
 
+
   // 4. Vis resultat
   showLotteryResult(groups);
 }
+
 
 function showLotteryResult(groups) {
   let html = '';
@@ -1376,15 +1500,18 @@ function showLotteryResult(groups) {
     html += '</ul>';
   });
 
+
   lotteryResultContent.innerHTML = html;
   document.body.classList.add('modal-open');
   lotteryResultOverlay.classList.remove('hidden');
 }
 
+
 function closeLotteryResult() {
     lotteryResultOverlay.classList.add('hidden');
     document.body.classList.remove('modal-open');
 }
+
 
 // ---------------- Events ----------------
 if (menuBtn) menuBtn.addEventListener('click', openMenu);
@@ -1393,9 +1520,11 @@ if (menuOverlay) menuOverlay.addEventListener('click', (e) => {
   if (e.target === menuOverlay) closeMenu();
 });
 
+
 addBtn.addEventListener('click', openPicker);
 pickerClose.addEventListener('click', closePicker);
 pickerOverlay.addEventListener('click', (e) => { if (e.target === pickerOverlay) closePicker(); });
+
 
 resetBtn.addEventListener('click', () => { document.body.classList.add('modal-open'); overlay.classList.remove('hidden'); });
 confirmNo.addEventListener('click', () => { overlay.classList.add('hidden'); document.body.classList.remove('modal-open'); });
@@ -1418,6 +1547,7 @@ if (courseNameOk) {
   });
 }
 
+
 // NYE event listeners til lodtrækning
 if (lotteryPickerClose) lotteryPickerClose.addEventListener('click', closeLotteryPicker);
 if (lotteryPickerOverlay) lotteryPickerOverlay.addEventListener('click', (e) => { if (e.target === lotteryPickerOverlay) closeLotteryPicker(); });
@@ -1431,6 +1561,8 @@ if (lotteryResultClose) lotteryResultClose.addEventListener('click', closeLotter
 if (lotteryResultOverlay) lotteryResultOverlay.addEventListener('click', (e) => { if (e.target === lotteryResultOverlay) closeLotteryResult(); });
 
 
+
+
 // ---------------- Toast ----------------
 let toastTimer = null;
 function showToast(msg) {
@@ -1441,10 +1573,12 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
 }
 
+
 // ---------------- Init ----------------
 if (players.length > 0) { activePlayerId = players[0].id; }
 render();
 ensureFinesLoaded(MIN_REFRESH_INTERVAL_MS).then(() => { if (players.length) renderPanels(); });
+
 
 window.addEventListener('online', () => {
   refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(({ changed }) => { if (changed) renderPickerList(false); });
