@@ -1,17 +1,3 @@
-================================================================================
-RETTET app.js FIL - ALLE 3 PROBLEMER LØST
-================================================================================
-
-RETTELSER:
-1. ✅ Menu-knappen forsvinder nu når man har valgt spillere
-2. ✅ Enter-tasten hopper nu til samme hul hos næste spiller (skifter også til Score-fanen automatisk)
-3. ✅ "Tættest pinnen" overskriften står nu OVER checkboxen ved hul 1 (ikke til venstre)
-
-Kopier alt indholdet nedenfor og erstat din app.js fil med det.
-
-================================================================================
-
-
 // Bevarer v21-funktionalitet (picker, faner, sending, cache), bruger robust GViz-parsing,
 // og viewer-tabel med sticky thead (KUN 1 række) + sticky første kolonne på "Total".
 const STORAGE_KEY = 'fgl.players.v1';
