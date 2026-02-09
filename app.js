@@ -670,11 +670,28 @@ function buildTableForPlayer(p){
 }
 
 function renderScoreCard(player) {
+  // Sikr at alle score-felter findes
+  if (!player.score) {
+    player.score = { 
+      holes: Array(18).fill(0), 
+      hcp: 0, 
+      hcpOut: 0, 
+      hcpIn: 0,
+      closestToPin: Array(18).fill(false)
+    };
+  }
+  if (!player.score.holes) player.score.holes = Array(18).fill(0);
+  if (player.score.hcp === undefined) player.score.hcp = 0;
+  if (player.score.hcpOut === undefined) player.score.hcpOut = 0;
+  if (player.score.hcpIn === undefined) player.score.hcpIn = 0;
+  if (!player.score.closestToPin) player.score.closestToPin = Array(18).fill(false);
+
+
   // Hjælpere til cross-player navigation
   function getPlayerIndex(id) {
       return players.findIndex(p => p.id === id);
   }
-
+  // Hop til samme hul hos næste spiller
   function focusSameHoleOnNextPlayer(currentPlayerId, holeIndex) {
       const idx = getPlayerIndex(currentPlayerId);
       if (idx === -1) return;
@@ -689,144 +706,272 @@ function renderScoreCard(player) {
 
       // Giv panelet tid til at tegne
       setTimeout(() => {
-        // 1) Skift aktiv subtab til "Score"
         const scoreBtn = document.querySelector('.subtabs .subtab:nth-child(2)');
-        if (scoreBtn) {
-          scoreBtn.click(); // aktiver "Score"-fanen for den nye spiller
-        }
+        if (scoreBtn) scoreBtn.click();
 
-        // 2) Find samme hul (1..18) og fokuser
-        const nextHoleInput = document.querySelector(
-          `.score-row:nth-child(${holeIndex + 1}) input`
-        );
-        if (nextHoleInput) {
-          nextHoleInput.focus();
-          nextHoleInput.select?.();
-        }
-      }, 30);
+        // Vent til DOM’en er tegnet
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const nextHoleInput = document.querySelector(
+              `.scorecard input[data-hole="${holeIndex}"]`
+            );
+            if (nextHoleInput) {
+              nextHoleInput.focus();
+              nextHoleInput.select?.();
+            }
+          });
+        });
+      }, 50);
+
   }
+  
   const wrap = document.createElement('div');
   wrap.className = 'scorecard';
 
-  // 18 huller i listeform
-  for (let i = 0; i < 18; i++) {
+  // Hjælpefunktion til at lave en score-row med checkbox
+  function createHoleRow(holeNum, holeIndex) {
     const row = document.createElement('div');
     row.className = 'score-row';
 
     const label = document.createElement('div');
     label.className = 'label';
-    label.textContent = `Hul ${i + 1}`;
+    label.textContent = `Hul ${holeNum}`;
 
     const inp = document.createElement('input');
-    
-    //inp.type = 'number';
     inp.type = 'text';
     inp.inputMode = 'numeric';
     inp.pattern = '[0-9]*';
     inp.enterKeyHint = 'Done';
-    
     inp.min = 0;
-
-    // Vis intet hvis værdien er 0
-    inp.value = player.score.holes[i] ? player.score.holes[i] : "";
+    inp.value = player.score.holes[holeIndex] ? player.score.holes[holeIndex] : "";
+    inp.setAttribute('data-player-id', player.id);
+    inp.setAttribute('data-hole', holeIndex);
     
-    // Når et hul er ændret → hop til samme hul hos næste spiller
     inp.addEventListener('change', () => {
-        player.score.holes[i] = Number(inp.value || 0);
-        savePlayers(players);
-        updateScoreTotals();
-      
-        /*
-        // Kun hop videre hvis der blev skrevet noget
-        if (inp.value !== "") {
-            focusSameHoleOnNextPlayer(player.id, i);
-        }
-        */
-      
+      player.score.holes[holeIndex] = Number(inp.value || 0);
+      savePlayers(players);
+      updateScoreTotals();
     });
 
-    // Android IME action 
     inp.addEventListener("beforeinput", (e) => {
       if (
         e.inputType === "insertLineBreak" ||
         e.inputType === "insertParagraph" ||
         (e.inputType.startsWith("insert") && e.data === null)
       ) {
-      e.preventDefault();
-                                                                                                                                                                                         focusSameHoleOnNextPlayer(player.id, i);
+        e.preventDefault();
+        focusSameHoleOnNextPlayer(player.id, holeIndex);
       }
     });
 
-    // Enter eller pil ned = hop til samme hul næste spiller
     inp.addEventListener('keydown', (e) => {
-        /*if (e.key === 'Enter' || e.key === 'ArrowDown') {
-            e.preventDefault();
-            focusSameHoleOnNextPlayer(player.id, i);
-        }*/
       const keysThatAdvance = ['Enter', 'ArrowDown', 'Next', 'Done', 'Tab'];
       if (keysThatAdvance.includes(e.key)) { 
         e.preventDefault();
-        focusSameHoleOnNextPlayer(player.id, i);
+        focusSameHoleOnNextPlayer(player.id, holeIndex);
       }
     });
 
-    row.append(label, inp);
+    // Checkbox for "Tættest pinnen"
+    const checkboxWrap = document.createElement('div');
+    checkboxWrap.style.display = 'flex';
+    checkboxWrap.style.flexDirection = 'column';
+    checkboxWrap.style.alignItems = 'center';
+    checkboxWrap.style.gap = '0.2rem';
+    
+    // Vis kun label på første hul - OVER checkboxen
+    if (holeIndex === 0) {
+      const checkLabel = document.createElement('span');
+      checkLabel.textContent = 'Tættest pinnen';
+      checkLabel.style.fontSize = '0.75rem';
+      checkLabel.style.color = 'var(--muted)';
+      checkLabel.style.fontWeight = '600';
+      checkLabel.style.whiteSpace = 'nowrap';
+      checkboxWrap.appendChild(checkLabel);
+    }
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'selbox';
+    checkbox.checked = player.score.closestToPin[holeIndex] || false;
+    checkbox.addEventListener('change', () => {
+      player.score.closestToPin[holeIndex] = checkbox.checked;
+      savePlayers(players);
+    });
+    
+    checkboxWrap.appendChild(checkbox);
+
+    row.append(label, inp, checkboxWrap);
     wrap.appendChild(row);
   }
 
-  // Tildelte slag (hcp)
-  const hcpRow = document.createElement('div');
-  hcpRow.className = 'score-row';
+  // Hul 1-9
+  for (let i = 0; i < 9; i++) {
+    createHoleRow(i + 1, i);
+  }
 
-  const hcpLab = document.createElement('div');
-  hcpLab.className = 'label';
-  hcpLab.textContent = 'Tildelte slag';
+  // Brutto ud
+  const bruttoOutRow = document.createElement('div');
+  bruttoOutRow.className = 'score-row';
+  const bruttoOutLab = document.createElement('div');
+  bruttoOutLab.className = 'label';
+  bruttoOutLab.textContent = 'Brutto ud';
+  const bruttoOutVal = document.createElement('input');
+  bruttoOutVal.type = 'text';
+  bruttoOutVal.readOnly = true;
+  bruttoOutVal.id = `score-brutto-out-${player.id}`;
+  bruttoOutRow.append(bruttoOutLab, bruttoOutVal);
+  wrap.appendChild(bruttoOutRow);
 
-  const hcpInput = document.createElement('input');
-  hcpInput.type = 'number';
-  hcpInput.min = 0;
-  //hcpInput.value = Number(player.score?.hcp ?? 0);
-  hcpInput.value = player.score?.hcp ? player.score?.hcp : "";
-  hcpInput.addEventListener('change', () => {
-    if (!player.score) player.score = { holes: Array(18).fill(0), hcp: 0 };
-    player.score.hcp = Number(hcpInput.value || 0);
+  // Tildelte slag ud
+  const hcpOutRow = document.createElement('div');
+  hcpOutRow.className = 'score-row';
+  const hcpOutLab = document.createElement('div');
+  hcpOutLab.className = 'label';
+  hcpOutLab.textContent = 'Slag ud';
+  const hcpOutInput = document.createElement('input');
+  hcpOutInput.type = 'number';
+  hcpOutInput.min = 0;
+  hcpOutInput.value = player.score?.hcpOut ? player.score?.hcpOut : "";
+  hcpOutInput.addEventListener('change', () => {
+    player.score.hcpOut = Number(hcpOutInput.value || 0);
     savePlayers(players);
     updateScoreTotals();
   });
+  hcpOutRow.append(hcpOutLab, hcpOutInput);
+  wrap.appendChild(hcpOutRow);
 
-  hcpRow.append(hcpLab, hcpInput);
-  wrap.appendChild(hcpRow);
+  // Netto ud
+  const netOutRow = document.createElement('div');
+  netOutRow.className = 'score-row';
+  const netOutLab = document.createElement('div');
+  netOutLab.className = 'label';
+  netOutLab.textContent = 'Netto ud';
+  const netOutVal = document.createElement('input');
+  netOutVal.type = 'text';
+  netOutVal.readOnly = true;
+  netOutVal.id = `score-net-out-${player.id}`;
+  netOutRow.append(netOutLab, netOutVal);
+  wrap.appendChild(netOutRow);
 
-  // Total (sum) + Netto (sum - hcp)
-  const totRow = document.createElement('div');
-  totRow.className = 'score-row';
-  const totLab = document.createElement('div');
-  totLab.className = 'label';
-  totLab.textContent = 'Total';
-  const totVal = document.createElement('input');
-  totVal.type = 'text';
-  totVal.readOnly = true;
-  totVal.id = `score-total-${player.id}`;
-  totRow.append(totLab, totVal);
-  wrap.appendChild(totRow);
+  // Hul 10-18
+  for (let i = 9; i < 18; i++) {
+    createHoleRow(i + 1, i);
+  }
 
-  const netRow = document.createElement('div');
-  netRow.className = 'score-row';
-  const netLab = document.createElement('div');
-  netLab.className = 'label';
-  netLab.textContent = 'Netto';
-  const netVal = document.createElement('input');
-  netVal.type = 'text';
-  netVal.readOnly = true;
-  netVal.id = `score-net-${player.id}`;
-  netRow.append(netLab, netVal);
-  wrap.appendChild(netRow);
+  // Brutto ind
+  const bruttoInRow = document.createElement('div');
+  bruttoInRow.className = 'score-row';
+  const bruttoInLab = document.createElement('div');
+  bruttoInLab.className = 'label';
+  bruttoInLab.textContent = 'Brutto ind';
+  const bruttoInVal = document.createElement('input');
+  bruttoInVal.type = 'text';
+  bruttoInVal.readOnly = true;
+  bruttoInVal.id = `score-brutto-in-${player.id}`;
+  bruttoInRow.append(bruttoInLab, bruttoInVal);
+  wrap.appendChild(bruttoInRow);
+
+  // Tildelte slag ind
+  const hcpInRow = document.createElement('div');
+  hcpInRow.className = 'score-row';
+  const hcpInLab = document.createElement('div');
+  hcpInLab.className = 'label';
+  hcpInLab.textContent = 'Slag ind';
+  const hcpInInput = document.createElement('input');
+  hcpInInput.type = 'number';
+  hcpInInput.min = 0;
+  hcpInInput.value = player.score?.hcpIn ? player.score?.hcpIn : "";
+  hcpInInput.addEventListener('change', () => {
+    player.score.hcpIn = Number(hcpInInput.value || 0);
+    savePlayers(players);
+    updateScoreTotals();
+  });
+  hcpInRow.append(hcpInLab, hcpInInput);
+  wrap.appendChild(hcpInRow);
+
+  // Netto ind
+  const netInRow = document.createElement('div');
+  netInRow.className = 'score-row';
+  const netInLab = document.createElement('div');
+  netInLab.className = 'label';
+  netInLab.textContent = 'Netto ind';
+  const netInVal = document.createElement('input');
+  netInVal.type = 'text';
+  netInVal.readOnly = true;
+  netInVal.id = `score-net-in-${player.id}`;
+  netInRow.append(netInLab, netInVal);
+  wrap.appendChild(netInRow);
+
+  // Brutto total
+  const bruttoTotalRow = document.createElement('div');
+  bruttoTotalRow.className = 'score-row';
+  const bruttoTotalLab = document.createElement('div');
+  bruttoTotalLab.className = 'label';
+  bruttoTotalLab.textContent = 'Brutto total';
+  const bruttoTotalVal = document.createElement('input');
+  bruttoTotalVal.type = 'text';
+  bruttoTotalVal.readOnly = true;
+  bruttoTotalVal.id = `score-brutto-total-${player.id}`;
+  bruttoTotalRow.append(bruttoTotalLab, bruttoTotalVal);
+  wrap.appendChild(bruttoTotalRow);
+
+  // Tildelte slag total (fjernet)
+  const hcpTotalRow = document.createElement('div');
+  hcpTotalRow.className = 'score-row';
+  const hcpTotalLab = document.createElement('div');
+  hcpTotalLab.className = 'label';
+  hcpTotalLab.textContent = 'Tildelte slag total';
+  const hcpTotalVal = document.createElement('input');
+  hcpTotalVal.type = 'text';
+  hcpTotalVal.readOnly = true;
+  hcpTotalVal.id = `score-hcp-total-${player.id}`;
+  hcpTotalRow.append(hcpTotalLab, hcpTotalVal);
+  wrap.appendChild(hcpTotalRow);
+
+  // Netto total
+  const netTotalRow = document.createElement('div');
+  netTotalRow.className = 'score-row';
+  const netTotalLab = document.createElement('div');
+  netTotalLab.className = 'label';
+  netTotalLab.textContent = 'Netto total';
+  const netTotalVal = document.createElement('input');
+  netTotalVal.type = 'text';
+  netTotalVal.readOnly = true;
+  netTotalVal.id = `score-net-total-${player.id}`;
+  netTotalRow.append(netTotalLab, netTotalVal);
+  wrap.appendChild(netTotalRow);
 
   function updateScoreTotals() {
-    const total = (player.score?.holes ?? []).reduce((a, b) => a + Number(b || 0), 0);
-    const net = total - Number(player.score?.hcp || 0);
-    totVal.value = total;
-    netVal.value = net;
+    // Beregn brutto ud (hul 1-9)
+    const bruttoOut = player.score.holes.slice(0, 9).reduce((a, b) => a + Number(b || 0), 0);
+    bruttoOutVal.value = bruttoOut > 0 ? bruttoOut : "";
+    
+    // Beregn brutto ind (hul 10-18)
+    const bruttoIn = player.score.holes.slice(9, 18).reduce((a, b) => a + Number(b || 0), 0);
+    bruttoInVal.value = bruttoIn > 0 ? bruttoIn : "";
+    
+    // Beregn brutto total
+    const bruttoTotal = bruttoOut + bruttoIn;
+    bruttoTotalVal.value = bruttoTotal > 0 ? bruttoTotal : "";
+    
+    // Beregn netto ud
+    const hcpOut = Number(player.score?.hcpOut || 0);
+    const netOut = bruttoOut - hcpOut;
+    netOutVal.value = (bruttoOut > 0 || hcpOut > 0) ? netOut : "";
+    
+    // Beregn netto ind
+    const hcpIn = Number(player.score?.hcpIn || 0);
+    const netIn = bruttoIn - hcpIn;
+    netInVal.value = (bruttoIn > 0 || hcpIn > 0) ? netIn : "";
+    
+    // Beregn tildelte slag total
+    const hcpTotal = hcpOut + hcpIn;
+    hcpTotalVal.value = hcpTotal > 0 ? hcpTotal : "";
+    
+    // Beregn netto total
+    const netTotal = bruttoTotal - hcpTotal;
+    netTotalVal.value = (bruttoTotal > 0 || hcpTotal > 0) ? netTotal : "";
   }
 
   updateScoreTotals();

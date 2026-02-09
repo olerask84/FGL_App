@@ -214,13 +214,25 @@ body.empty-state #addPlayerBtn { position: fixed;
 .scorecard{
   display:block;
 }
-.score-row{
+
+/*.score-row{
   display:flex;
   align-items:center;
   gap:.75rem;
   padding:.35rem .2rem;
   border-bottom:1px solid var(--border);
+}*/
+
+.score-row{
+  display:grid;
+  grid-template-columns: 6.5rem 6rem 1fr 2.2rem; /* label | score | spacer | checkbox */
+  align-items:center;
+  padding:.35rem .2rem;
+  border-bottom:1px solid var(--border);
 }
+
+.score-row input[type="checkbox"]{ justify-self:center; }
+
 .score-row:last-child{ border-bottom:none; }
 .score-row .label{
   width:6.5rem;
