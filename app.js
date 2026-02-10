@@ -1601,11 +1601,42 @@ window.addEventListener('online', () => {
   });
   queueDrain();
 });
+
 if ('serviceWorker' in navigator) {
+  // Undgå flere reloads i samme fane
+  const RELOAD_FLAG = 'fgl.pwa.reloaded';
+
+  function safeReloadOnce(msg = null, delay = 800) {
+    if (sessionStorage.getItem(RELOAD_FLAG)) return;
+    sessionStorage.setItem(RELOAD_FLAG, '1');
+    if (msg) showToast(msg);
+    setTimeout(() => window.location.reload(), delay);
+  }
+
+  // 1) Beskeder fra SW
   navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data?.type === 'NEW_VERSION') {
-      console.log('Ny version fundet – genindlæser...');
-      window.location.reload();
+    if (event.data && event.data.type === 'NEW_VERSION') {
+      console.log('Ny version aktiv – genindlæser…');
+      safeReloadOnce('App opdateret! Genindlæser…', 1200);
     }
   });
+
+  // 2) Failsafe: hvis controlleren skifter, er en ny SW taget i brug
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('controllerchange – ny service worker styrer siden.');
+    safeReloadOnce('Ny version aktiv – genindlæser…', 800);
+  });
+
+  // 3) (Valgfrit) Tving periodisk update-tjek, hvis du ikke allerede gør det i index.html
+  // Hvis du registrerer SW her i app.js, kan du afkommentere nedenstående:
+  /*
+  navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+    .then((reg) => {
+      // Tjek hver time
+      setInterval(() => reg.update(), 60 * 60 * 1000);
+      // Og et tidligt tjek kort efter load
+      setTimeout(() => reg.update(), 10 * 1000);
+    })
+    .catch((err) => console.error('SW registration failed:', err));
+  */
 }
