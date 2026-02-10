@@ -921,7 +921,7 @@ function renderScoreCard(player) {
   hcpTotalRow.className = 'score-row';
   const hcpTotalLab = document.createElement('div');
   hcpTotalLab.className = 'label';
-  hcpTotalLab.textContent = 'Tildelte slag total';
+  hcpTotalLab.textContent = 'Slag total';
   const hcpTotalVal = document.createElement('input');
   hcpTotalVal.type = 'text';
   hcpTotalVal.readOnly = true;
