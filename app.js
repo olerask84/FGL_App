@@ -6,7 +6,7 @@ const MIN_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
 // 4 timer
 
 // === Afslut runde backend-konfiguration ===
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnrBXAAL3wf1GMxZo4P-cWL-MGVPj4TtVhSHZc7Pp46VKK6aD84MfH3BIE56rUU9stCQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRt4SqpIuYbYQoSZeu1O5MS7wINDA4yRVAqa_2Ca4ZaHDrK5rWeafN2UqRuSBNmT9kxw/exec';
 const SECRET_KEY = 'O^AaXzP8aa%g8jGt@d_z_GK%y$ko$$k^#e8tq*qVzWT!OIh#14';
 const AUTO_RESET_AFTER_SEND = true;
 const ENABLE_OFFLINE_QUEUE = true;
@@ -1112,13 +1112,51 @@ function buildFinesForPlayer(player){
   }
   return finesOut;
 }
-function buildPayloadForPlayer(player, courseName){
+
+/*function buildPayloadForPlayer(player, courseName){
   const timestamp = new Date().toISOString();
   return {
     secret: SECRET_KEY,
     sheetTab: player.name,
     tableName: `${courseName} (${new Date().toLocaleString('da-DK')})`,
     fines: buildFinesForPlayer(player),
+    meta: { courseName, player: player.name, at: timestamp, app: 'FGL_PWA_v18' }
+  };
+}*/
+
+function buildPayloadForPlayer(player, courseName){
+  const timestamp = new Date().toISOString();
+
+  // --- Ny beregning af scoretal ---
+  const s = player.score || {};
+  const holes = s.holes || Array(18).fill(0);
+  const hcpOut = Number(s.hcpOut || 0);
+  const hcpIn  = Number(s.hcpIn  || 0);
+
+  // Brutto
+  const bruttoOut = holes.slice(0, 9).reduce((a, b) => a + Number(b || 0), 0);
+  const bruttoIn  = holes.slice(9, 18).reduce((a, b) => a + Number(b || 0), 0);
+
+  // Netto
+  const nettoOut   = bruttoOut - hcpOut;               // For 9
+  const nettoIn    = bruttoIn  - hcpIn;                // Bag 9
+  const nettoTotal = (bruttoOut + bruttoIn) - (hcpOut + hcpIn);
+
+  // Bonus slag = antal "Tættest pinnen" checkbokse der er slået til
+  const bonusSlag  = (s.closestToPin || []).filter(Boolean).length;
+
+  return {
+    secret: SECRET_KEY,
+    sheetTab: player.name,
+    tableName: `${courseName} (${new Date().toLocaleString('da-DK')})`,
+    fines: buildFinesForPlayer(player),
+    // Ny pakke: scores
+    scores: {
+      nettoOut,
+      nettoIn,
+      nettoTotal,
+      bonusSlag
+    },
     meta: { courseName, player: player.name, at: timestamp, app: 'FGL_PWA_v18' }
   };
 }
