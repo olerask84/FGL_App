@@ -1,9 +1,9 @@
-// --- Service Worker for FGL (v37) ---
-const CACHE_NAME = 'fgl-cache-v37';
+// --- Service Worker for FGL (v38) ---
+const CACHE_NAME = 'fgl-cache-v38';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.json',
   './assets/icons/FGL_192.png', './assets/icons/FGL_512.png', './assets/icons/FGL_192_VM.png'
-];
+];8
 
 // Install: precache + skip waiting
 self.addEventListener('install', (e) => {

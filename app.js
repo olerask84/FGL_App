@@ -5,6 +5,11 @@ const MAX_PLAYERS = 4;
 const MIN_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
 // 4 timer
 
+
+// Global "Bedste bold" state (synkroniseret mellem alle spillere)
+const BEST_BOLD_KEY = 'fgl.bestbold.v1';
+let bestBoldEnabled = (localStorage.getItem(BEST_BOLD_KEY) === '1');
+
 // === Afslut runde backend-konfiguration ===
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRt4SqpIuYbYQoSZeu1O5MS7wINDA4yRVAqa_2Ca4ZaHDrK5rWeafN2UqRuSBNmT9kxw/exec';
 const SECRET_KEY = 'O^AaXzP8aa%g8jGt@d_z_GK%y$ko$$k^#e8tq*qVzWT!OIh#14';
@@ -105,6 +110,21 @@ function getAvailableTabsFromPlayers() {
 }
 
 // ------------------------------- Utils --------------------------------
+function setBestBoldEnabled(on) {
+  bestBoldEnabled = !!on;
+  localStorage.setItem(BEST_BOLD_KEY, bestBoldEnabled ? '1' : '0');
+  // Opdater alle synlige checkbokse i DOM'en
+  document.querySelectorAll('input.bestbold-toggle').forEach(cb => {
+    cb.checked = bestBoldEnabled;
+  });
+  // (Valgfrit) trig beregninger, hvis "Bedste bold" skal påvirke noget:
+  // recalcAndRenderAvgNetto();  // kun hvis du kobler det på beregninger
+}
+
+function getBestBoldEnabled() {
+  return !!bestBoldEnabled;
+}
+
 function uid(){ return 'p-' + Math.random().toString(36).slice(2, 9); }
 function clamp(n, min, max){ return Math.max(min, Math.min(max, n));
 }
@@ -1034,7 +1054,21 @@ function renderScoreCard(player) {
 
       const bestBoldCheck = document.createElement('input');
       bestBoldCheck.type = 'checkbox';
+      bestBoldCheck.className = 'bestbold-toggle';  // vigtig: fælles class
       bestBoldCheck.id = `bestBold-${player.id}`;
+      bestBoldCheck.checked = getBestBoldEnabled();
+
+      // Når du klikker i ET kort, slår det til/fra for ALLE
+      bestBoldCheck.addEventListener('change', () => {
+        setBestBoldEnabled(bestBoldCheck.checked);
+      });
+
+      /*const bestBoldLabel = document.createElement('span');
+      bestBoldLabel.textContent = 'Bedste bold';
+
+      const bestBoldCheck = document.createElement('input');
+      bestBoldCheck.type = 'checkbox';
+      bestBoldCheck.id = `bestBold-${player.id}`;*/
 
       avgLine.append(avgLabel, avgValue, bestBoldLabel, bestBoldCheck);
       avgWrap.appendChild(avgLine);
@@ -1290,7 +1324,7 @@ function queueDrain(){
     })();
   } catch {}
 }
-function fullResetLikeButton(){ localStorage.removeItem(STORAGE_KEY); removeAllPlayers(); }
+function fullResetLikeButton(){ localStorage.removeItem(STORAGE_KEY); removeAllPlayers(); calStorage.removeItem(BEST_BOLD_KEY); bestBoldEnabled = false; }
 
 async function finishRoundFlow(courseName){
   if (!players.length) return;
@@ -1656,7 +1690,7 @@ pickerOverlay.addEventListener('click', (e) => { if (e.target === pickerOverlay)
 
 resetBtn.addEventListener('click', () => { document.body.classList.add('modal-open'); overlay.classList.remove('hidden'); });
 confirmNo.addEventListener('click', () => { overlay.classList.add('hidden'); document.body.classList.remove('modal-open'); });
-confirmYes.addEventListener('click', () => { overlay.classList.add('hidden'); document.body.classList.remove('modal-open'); localStorage.removeItem(STORAGE_KEY); removeAllPlayers(); });
+confirmYes.addEventListener('click', () => { overlay.classList.add('hidden'); document.body.classList.remove('modal-open'); localStorage.removeItem(STORAGE_KEY); removeAllPlayers(); localStorage.removeItem(BEST_BOLD_KEY); bestBoldEnabled = false });
 // Afslut runde dialogs
 if (endRoundBtn) { endRoundBtn.addEventListener('click', () => { document.body.classList.add('modal-open'); endRoundOverlay.classList.remove('hidden'); });
 }
