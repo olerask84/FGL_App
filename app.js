@@ -54,6 +54,8 @@ let pickerSelected = new Set();
 let sheetPlayers = [];  // [{navn, faneNavn}]
 let sheetLoaded = false;
 let sheetLoadError = null;
+let avgNettoGlobal = 0;
+
 // Afslut runde elementer
 const endRoundBtn = document.getElementById('endRoundBtn');
 const endRoundOverlay = document.getElementById('endRoundOverlay');
@@ -728,6 +730,27 @@ function renderScoreCard(player) {
   const wrap = document.createElement('div');
   wrap.className = 'scorecard';
 
+  // --- Handicap felt i toppen ---
+  const hcpRow = document.createElement('div');
+  hcpRow.className = 'score-row';
+
+  const hcpLabel = document.createElement('div');
+  hcpLabel.className = 'label';
+  hcpLabel.textContent = 'Spiller hcp';
+
+  const hcpInput = document.createElement('input');
+  hcpInput.type = 'text';
+  hcpInput.min = 0;
+  hcpInput.value = player.score.hcp ? player.score.hcp: "";
+  
+  hcpInput.addEventListener('change', () => {
+      player.score.hcp = Number((hcpInput.value || "0").replace(",", "."));
+      savePlayers(players);
+  });
+
+  hcpRow.append(hcpLabel, hcpInput);
+  wrap.appendChild(hcpRow);
+
   // Hjælpefunktion til at lave en score-row med checkbox
   function createHoleRow(holeNum, holeIndex) {
     const row = document.createElement('div');
@@ -751,6 +774,7 @@ function renderScoreCard(player) {
       player.score.holes[holeIndex] = Number(inp.value || 0);
       savePlayers(players);
       updateScoreTotals();
+      recalcAndRenderAvgNetto();
     });
 
     inp.addEventListener("beforeinput", (e) => {
@@ -760,6 +784,10 @@ function renderScoreCard(player) {
         (e.inputType.startsWith("insert") && e.data === null)
       ) {
         e.preventDefault();
+        player.score.holes[holeIndex] = Number(inp.value || 0);
+        savePlayers(players);
+        updateScoreTotals();
+        recalcAndRenderAvgNetto();
         focusSameHoleOnNextPlayer(player.id, holeIndex);
       }
     });
@@ -768,6 +796,10 @@ function renderScoreCard(player) {
       const keysThatAdvance = ['Enter', 'ArrowDown', 'Next', 'Done', 'Tab'];
       if (keysThatAdvance.includes(e.key)) { 
         e.preventDefault();
+        player.score.holes[holeIndex] = Number(inp.value || 0);
+        savePlayers(players);
+        updateScoreTotals();
+        recalcAndRenderAvgNetto();
         focusSameHoleOnNextPlayer(player.id, holeIndex);
       }
     });
@@ -830,13 +862,14 @@ function renderScoreCard(player) {
   hcpOutLab.className = 'label';
   hcpOutLab.textContent = 'Slag ud';
   const hcpOutInput = document.createElement('input');
-  hcpOutInput.type = 'number';
+  hcpOutInput.type = 'text';
   hcpOutInput.min = 0;
   hcpOutInput.value = player.score?.hcpOut ? player.score?.hcpOut : "";
   hcpOutInput.addEventListener('change', () => {
     player.score.hcpOut = Number(hcpOutInput.value || 0);
     savePlayers(players);
     updateScoreTotals();
+    recalcAndRenderAvgNetto();
   });
   hcpOutRow.append(hcpOutLab, hcpOutInput);
   wrap.appendChild(hcpOutRow);
@@ -879,13 +912,14 @@ function renderScoreCard(player) {
   hcpInLab.className = 'label';
   hcpInLab.textContent = 'Slag ind';
   const hcpInInput = document.createElement('input');
-  hcpInInput.type = 'number';
+  hcpInInput.type = 'text';
   hcpInInput.min = 0;
   hcpInInput.value = player.score?.hcpIn ? player.score?.hcpIn : "";
   hcpInInput.addEventListener('change', () => {
     player.score.hcpIn = Number(hcpInInput.value || 0);
     savePlayers(players);
     updateScoreTotals();
+    recalcAndRenderAvgNetto();
   });
   hcpInRow.append(hcpInLab, hcpInInput);
   wrap.appendChild(hcpInRow);
@@ -975,7 +1009,79 @@ function renderScoreCard(player) {
   }
 
   updateScoreTotals();
+
+  // --- Gennemsnit netto + bedste bold ---
+      const avgWrap = document.createElement('div');
+      avgWrap.className = 'score-total-wrap';
+      avgWrap.id = 'avgNettoWrap';
+
+      const avgLine = document.createElement('div');
+      avgLine.className = 'score-total-line';
+
+      const avgLabel = document.createElement('span');
+      avgLabel.className = 'name';
+      avgLabel.textContent = 'Gennemsnit netto:';
+
+      const avgValue = document.createElement('span');
+      avgValue.className = 'avg-netto-val';
+      avgValue.textContent = avgNettoGlobal.toLocaleString('da-DK', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
+      const bestBoldLabel = document.createElement('span');
+      bestBoldLabel.textContent = 'Bedste bold';
+
+      const bestBoldCheck = document.createElement('input');
+      bestBoldCheck.type = 'checkbox';
+      bestBoldCheck.id = `bestBold-${player.id}`;
+
+      avgLine.append(avgLabel, avgValue, bestBoldLabel, bestBoldCheck);
+      avgWrap.appendChild(avgLine);
+
+      wrap.appendChild(avgWrap);
   return wrap;
+}
+
+function calculateAvgNetto() {
+  if (!players.length) {
+    avgNettoGlobal = 0;
+    return;
+  }
+
+  let sum = 0;
+  let count = 0;
+
+  for (const p of players) {
+    const s = p.score || {};
+    const holes = Array.isArray(s.holes) ? s.holes : Array(18).fill(0);
+
+    const brutto = holes.reduce((a, b) => a + Number(b || 0), 0);
+    const hcp = Number(s.hcpOut || 0) + Number(s.hcpIn || 0);
+
+    if (brutto > 0 || hcp > 0) {
+      sum += (brutto - hcp);
+      count++;
+    }
+  }
+
+  avgNettoGlobal = count ? (sum / count) : 0;
+}
+
+function renderAvgNetto() {
+  const txt = avgNettoGlobal.toLocaleString('da-DK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
+  document
+    .querySelectorAll('.avg-netto-val')
+    .forEach(el => el.textContent = txt);
+}
+
+function recalcAndRenderAvgNetto() {
+  calculateAvgNetto();
+  renderAvgNetto();
 }
 
 function renderPanels() {
@@ -1034,6 +1140,7 @@ function renderPanels() {
         btnF.classList.remove('active');
         content.innerHTML = '';
         content.appendChild(renderScoreCard(p));
+        recalcAndRenderAvgNetto();
     };
 
     btnF.addEventListener('click', showFines);
@@ -1043,6 +1150,7 @@ function renderPanels() {
     showFines();
 
     panelsEl.appendChild(panel);
+    
 }
 
 function calcAmount(player, fine) {
@@ -1104,25 +1212,10 @@ function buildFinesForPlayer(player){
     const amount = calcAmount(player, fine);
     finesOut.push({ id: fine.id, name: fine.name, count, amount })
 
-    //const val = player.rows[fine.id];
-    //const count = (fine.type === 'count') ? Number(val ?? 0) : (val ? 1 : 0);
-    //const amount = calcAmount(player, fine);
-    //finesOut.push({ id: fine.id, name: fine.name, count, amount });
-
   }
   return finesOut;
 }
 
-/*function buildPayloadForPlayer(player, courseName){
-  const timestamp = new Date().toISOString();
-  return {
-    secret: SECRET_KEY,
-    sheetTab: player.name,
-    tableName: `${courseName} (${new Date().toLocaleString('da-DK')})`,
-    fines: buildFinesForPlayer(player),
-    meta: { courseName, player: player.name, at: timestamp, app: 'FGL_PWA_v18' }
-  };
-}*/
 
 function buildPayloadForPlayer(player, courseName){
   const timestamp = new Date().toISOString();
@@ -1401,25 +1494,6 @@ function renderMenuList() {
 
 
 // ---------------- Lodtrækning: Picker, logik og resultat ----------------
-
-/*function openLotteryPicker() {
-  document.body.classList.add('modal-open');
-  lotteryPickerOverlay.classList.remove('hidden');
-  lotteryPickerSelected = new Set();
-  updateLotteryPickerConfirm();
-
-  const cached = loadSheetCache();
-  if (cached.list && cached.list.length){
-    sheetPlayers = cached.list;
-    sheetLoaded = true;
-    renderLotteryPickerList(false);
-  } else {
-    renderLotteryPickerList(true);
-  }
-  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
-    .then(()=> renderLotteryPickerList(false))
-    .catch(()=> renderLotteryPickerList(false));
-}*/
 
 function openLotteryPicker() {
   document.body.classList.add('modal-open');
