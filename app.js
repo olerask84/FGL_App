@@ -1040,7 +1040,7 @@ function renderScoreCard(player) {
 
       const avgLabel = document.createElement('span');
       avgLabel.className = 'name';
-      avgLabel.textContent = 'Gennemsnit netto:';
+      avgLabel.textContent = 'Gennemsnit netto bold';
 
       const avgValue = document.createElement('span');
       avgValue.className = 'avg-netto-val';
