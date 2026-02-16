@@ -755,6 +755,7 @@ function renderScoreCard(player) {
   const hcpRow = document.createElement('div');
   hcpRow.className = 'score-row border-bottom-bold';
 
+  hcpRow.style.alignItems = "center";
   /*// Overrider grid-layout for denne ene række
   hcpRow.style.display = "flex";
   hcpRow.style.alignItems = "center";
@@ -781,7 +782,7 @@ function renderScoreCard(player) {
   avgHcpLabel.textContent = 'Gennemsnit hcp bold: ';
   avgHcpLabel.style.fontWeight = '700';
   avgHcpLabel.style.whiteSpace = 'nowrap';
-  avgHcpLabel.style.marginLeft = "auto";
+  //avgHcpLabel.style.marginLeft = "auto";
 
   // Selve gennemsnittet
   const avgHcpEl = document.createElement('span');
