@@ -755,53 +755,6 @@ function renderScoreCard(player) {
   const hcpRow = document.createElement('div');
   hcpRow.className = 'score-row border-bottom-bold';
 
-  // MATCH samme grid som hul-rækkerne
-  // Kolonner:  label | input | tom plads | tom plads
-  // Dette gør at HCP-linjen flugter 100% med hul-linjerne
-
-  // Label for spiller hcp
-  const hcpLabel = document.createElement('div');
-  hcpLabel.className = 'label';
-  hcpLabel.textContent = 'Spiller hcp';
-
-  // Inputfelt
-  const hcpInput = document.createElement('input');
-  hcpInput.type = 'text';
-  hcpInput.min = 0;
-  hcpInput.value = player.score.hcp ? player.score.hcp : "";
-  hcpInput.addEventListener('change', () => {
-      player.score.hcp = Number((hcpInput.value || "0").replace(",", "."));
-      savePlayers(players);
-      recalcAndRenderAvgHcp();
-  });
-
-  // Tom celle for at udfylde kolonne 3 + 4
-  const spacer = document.createElement('div');
-
-  // Label foran gennemsnit
-  const avgHcpLabel = document.createElement('span');
-  avgHcpLabel.textContent = 'Gennemsnit hcp bold:';
-  avgHcpLabel.style.fontWeight = '700';
-  avgHcpLabel.style.whiteSpace = 'nowrap';
-  avgHcpLabel.style.marginLeft = "auto";
-
-  // Selve gennemsnittet
-  const avgHcpEl = document.createElement('span');
-  avgHcpEl.className = 'avg-hcp-val';
-  avgHcpEl.style.fontWeight = '700';
-  avgHcpEl.textContent = avgHcpGlobal.toLocaleString('da-DK', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-  });
-
-  // Sæt tingene i grid-formatet
-  hcpRow.append(hcpLabel, hcpInput, avgHcpLabel, avgHcpEl);
-  wrap.appendChild(hcpRow);
-
-  /*// --- Handicap felt i toppen ---
-  const hcpRow = document.createElement('div');
-  hcpRow.className = 'score-row border-bottom-bold';
-
   // Overrider grid-layout for denne ene række
   hcpRow.style.display = "flex";
   hcpRow.style.alignItems = "center";
@@ -841,7 +794,7 @@ function renderScoreCard(player) {
 
   // Sæt tingene i rigtig rækkefølge
   hcpRow.append(hcpLabel, hcpInput, avgHcpLabel, avgHcpEl);
-  wrap.appendChild(hcpRow);*/
+  wrap.appendChild(hcpRow);
 
   // Hjælpefunktion til at lave en score-row med checkbox
   function createHoleRow(holeNum, holeIndex) {
