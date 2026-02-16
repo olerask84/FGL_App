@@ -752,7 +752,7 @@ function renderScoreCard(player) {
 
   // --- Handicap felt i toppen ---
   const hcpRow = document.createElement('div');
-  hcpRow.className = 'score-row';
+  hcpRow.className = 'score-row border-bottom-bold';
 
   const hcpLabel = document.createElement('div');
   hcpLabel.className = 'label';
@@ -775,6 +775,11 @@ function renderScoreCard(player) {
   function createHoleRow(holeNum, holeIndex) {
     const row = document.createElement('div');
     row.className = 'score-row';
+    
+  // ➜ Tilføj fed bundramme på hul 9 (index 8) og hul 18 (index 17)
+    if (holeIndex === 8 || holeIndex === 17) {
+      row.classList.add('border-bottom-bold');
+    }
 
     const label = document.createElement('div');
     label.className = 'label';
@@ -836,8 +841,8 @@ function renderScoreCard(player) {
       const checkLabel = document.createElement('span');
       checkLabel.textContent = 'Tættest pinnen';
       checkLabel.style.fontSize = '0.75rem';
-      checkLabel.style.color = 'var(--muted)';
-      checkLabel.style.fontWeight = '600';
+      checkLabel.style.color = 'var(--ink)';
+      checkLabel.style.fontWeight = '700';
       checkLabel.style.whiteSpace = 'nowrap';
       checkboxWrap.appendChild(checkLabel);
     }
@@ -896,7 +901,7 @@ function renderScoreCard(player) {
 
   // Netto ud
   const netOutRow = document.createElement('div');
-  netOutRow.className = 'score-row';
+  netOutRow.className = 'score-row border-top-bold border-bottom-bold';
   const netOutLab = document.createElement('div');
   netOutLab.className = 'label';
   netOutLab.textContent = 'Netto ud';
@@ -946,7 +951,7 @@ function renderScoreCard(player) {
 
   // Netto ind
   const netInRow = document.createElement('div');
-  netInRow.className = 'score-row';
+  netInRow.className = 'score-row border-top-bold border-bottom-bold';
   const netInLab = document.createElement('div');
   netInLab.className = 'label';
   netInLab.textContent = 'Netto ind';
@@ -985,7 +990,7 @@ function renderScoreCard(player) {
 
   // Netto total
   const netTotalRow = document.createElement('div');
-  netTotalRow.className = 'score-row';
+  netTotalRow.className = 'score-row border-top-bold border-bottom-bold';
   const netTotalLab = document.createElement('div');
   netTotalLab.className = 'label';
   netTotalLab.textContent = 'Netto total';
@@ -1062,13 +1067,6 @@ function renderScoreCard(player) {
       bestBoldCheck.addEventListener('change', () => {
         setBestBoldEnabled(bestBoldCheck.checked);
       });
-
-      /*const bestBoldLabel = document.createElement('span');
-      bestBoldLabel.textContent = 'Bedste bold';
-
-      const bestBoldCheck = document.createElement('input');
-      bestBoldCheck.type = 'checkbox';
-      bestBoldCheck.id = `bestBold-${player.id}`;*/
 
       avgLine.append(avgLabel, avgValue, bestBoldLabel, bestBoldCheck);
       avgWrap.appendChild(avgLine);

@@ -215,13 +215,6 @@ body.empty-state #addPlayerBtn { position: fixed;
   display:block;
 }
 
-/*.score-row{
-  display:flex;
-  align-items:center;
-  gap:.75rem;
-  padding:.35rem .2rem;
-  border-bottom:1px solid var(--border);
-}*/
 
 .score-row{
   display:grid;
@@ -237,7 +230,7 @@ body.empty-state #addPlayerBtn { position: fixed;
 .score-row .label{
   width:6.5rem;
   font-weight:700;
-  color:var(--muted);
+  color:var(--ink);
   flex:0 0 auto;
 }
 .score-row input[type="number"],
@@ -283,6 +276,40 @@ body.empty-state #addPlayerBtn { position: fixed;
   min-width:4rem;
   text-align:right;
   font-weight:700;
+}
+
+/* Gør AL tekst i scorekortet fed (både labels og input felter) */
+.scorecard, 
+.scorecard .label, 
+.scorecard input {
+  font-weight: 700 !important; /* Bruger 800 for at være ekstra tydelig */
+}
+
+/* Specifik styling til Netto rækkerne */
+.score-row.netto-row {
+  background-color: #CCFFCC; /* Den ønskede lysegrønne farve */
+  border-radius: 4px;        /* Lille afrunding ser pænt ud med baggrundsfarve */
+  margin-bottom: 2px;        /* Lille mellemrum så farven ikke klumper sammen hvis de ligger tæt */
+}
+
+/* Sikrer at input-felterne i netto-rækkerne ikke dækker for baggrundsfarven */
+.score-row.netto-row input {
+  background-color: rgba(255, 255, 255, 0.5); /* Let gennemsigtig hvid i input feltet */
+}
+
+/* Tyk sort linje i bunden af en række */
+.score-row.border-bottom-bold {
+    border-bottom: 2px solid var(--ink) !important;
+}
+
+/* Tyk sort linje i toppen af en række (bruges til Netto Total) */
+.score-row.border-top-bold {
+    border-top: 2px solid var(--ink) !important;
+}
+
+/* Justering for at sikre at borders ikke overlapper mærkeligt */
+.score-row {
+    border-bottom: 1px solid var(--border); /* Standard linje */
 }
 
 /* Små skærme: lad inputs være lidt bredere */
