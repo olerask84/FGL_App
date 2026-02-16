@@ -1,5 +1,5 @@
-// --- Service Worker for FGL (v40) ---
-const CACHE_NAME = 'fgl-cache-v40';
+// --- Service Worker for FGL (v41) ---
+const CACHE_NAME = 'fgl-cache-v41';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.json',
   './assets/icons/FGL_192.png', './assets/icons/FGL_512.png', './assets/icons/FGL_192_VM.png'
