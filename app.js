@@ -781,7 +781,8 @@ function renderScoreCard(player) {
   avgHcpLabel.textContent = 'Gennemsnit hcp bold: ';
   avgHcpLabel.style.fontWeight = '700';
   avgHcpLabel.style.whiteSpace = 'nowrap';
-  avgHcpLabel.style.alignItems = "center";
+  avgHcpLabel.style.alignItems = 'center';
+  avgHcpLabel.style.gab = '10px';
   //avgHcpLabel.style.marginLeft = "auto";
 
   // Selve gennemsnittet
