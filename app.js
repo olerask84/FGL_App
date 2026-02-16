@@ -755,10 +755,10 @@ function renderScoreCard(player) {
   const hcpRow = document.createElement('div');
   hcpRow.className = 'score-row border-bottom-bold';
 
-  // Overrider grid-layout for denne ene række
+  /*// Overrider grid-layout for denne ene række
   hcpRow.style.display = "flex";
   hcpRow.style.alignItems = "center";
-  hcpRow.style.gap = "10px";
+  hcpRow.style.gap = "10px";*/
 
   // Label for spiller hcp (IKKE grid-label!)
   const hcpLabel = document.createElement('span');   // <-- vigtigt: span, ikke div.label
