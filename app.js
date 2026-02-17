@@ -754,6 +754,7 @@ function renderScoreCard(player) {
   // --- Handicap felt i toppen ---
   const hcpRow = document.createElement('div');
   hcpRow.className = 'score-row border-bottom-bold';
+  hcpRow.classList.add('hcp-top'); // <-- NY linje
 
   /*// Overrider grid-layout for denne ene række
   hcpRow.style.display = "flex";
@@ -779,10 +780,11 @@ function renderScoreCard(player) {
   // Label foran gennemsnit
   const avgHcpLabel = document.createElement('span');
   avgHcpLabel.textContent = 'Gennemsnit hcp bold: ';
+  avgHcpLabel.classList.add('avg-hcp-label'); // <-- NY linje
   avgHcpLabel.style.fontWeight = '700';
   avgHcpLabel.style.whiteSpace = 'nowrap';
-  avgHcpLabel.style.alignItems = 'center';
-  avgHcpLabel.style.gab = '10px';
+  //avgHcpLabel.style.alignItems = 'center';
+  //avgHcpLabel.style.gab = '10px';
   //avgHcpLabel.style.marginLeft = "auto";
 
   // Selve gennemsnittet
