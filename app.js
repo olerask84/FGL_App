@@ -756,9 +756,9 @@ function renderScoreCard(player) {
   hcpRow.className = 'score-row border-bottom-bold';
 
   // Overrider grid-layout for denne ene række
-  hcpRow.style.display = "flex";
-  hcpRow.style.alignItems = "center";
-  hcpRow.style.gap = "10px";
+  //hcpRow.style.display = 'flex';
+  //hcpRow.style.alignItems = 'center';
+  //hcpRow.style.gap = '10px';
 
   // Label for spiller hcp (IKKE grid-label!)
   const hcpLabel = document.createElement('span');   // <-- vigtigt: span, ikke div.label
@@ -777,8 +777,8 @@ function renderScoreCard(player) {
   });
 
   // Label foran gennemsnit
-  const avgHcpLabel = document.createElement('span');
-  avgHcpLabel.textContent = 'Gennemsnit hcp bold:';
+  const avgHcpLabel = document.createElement('div');
+  avgHcpLabel.innerHTML = 'Gennemsnit hcp bold:&nbsp;&nbsp;';
   avgHcpLabel.style.fontWeight = '700';
   avgHcpLabel.style.whiteSpace = 'nowrap';
   avgHcpLabel.style.marginLeft = "auto";
