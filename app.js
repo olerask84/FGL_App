@@ -11,7 +11,7 @@ const BEST_BOLD_KEY = 'fgl.bestbold.v1';
 let bestBoldEnabled = (localStorage.getItem(BEST_BOLD_KEY) === '1');
 
 // === Afslut runde backend-konfiguration ===
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRt4SqpIuYbYQoSZeu1O5MS7wINDA4yRVAqa_2Ca4ZaHDrK5rWeafN2UqRuSBNmT9kxw/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQBeRRe4UXdcJnziT0bCRGwgpVd7g37KceslFETj65XZ1hXuTmApFFGq54oBrQS3Ix3g/exec';
 const SECRET_KEY = 'O^AaXzP8aa%g8jGt@d_z_GK%y$ko$$k^#e8tq*qVzWT!OIh#14';
 const AUTO_RESET_AFTER_SEND = true;
 const ENABLE_OFFLINE_QUEUE = true;
@@ -1330,7 +1330,8 @@ function buildPayloadForPlayer(player, courseName){
   const nettoTotal = (bruttoOut + bruttoIn) - (hcpOut + hcpIn);
 
   // Bonus slag = antal "Tættest pinnen" checkbokse der er slået til
-  const bonusSlag  = (s.closestToPin || []).filter(Boolean).length;
+  const bonusClosest  = (s.closestToPin || []).filter(Boolean).length;
+  const bonusSlag    = bonusClosest + (getBestBoldEnabled() ? 2 : 0);
 
   return {
     secret: SECRET_KEY,
@@ -1342,9 +1343,14 @@ function buildPayloadForPlayer(player, courseName){
       nettoOut,
       nettoIn,
       nettoTotal,
-      bonusSlag
+      bonusSlag,
+      
+      hcp: Number(s.hcp ?? 0),                // <-- NY
+      avgHcp: Number(avgHcpGlobal ?? 0),      // <-- NY
+      avgNetto: Number(avgNettoGlobal ?? 0)   // <-- NY
+
     },
-    meta: { courseName, player: player.name, at: timestamp, app: 'FGL_PWA_v18' }
+    meta: { courseName, player: player.name, at: timestamp, app: 'FGL_PWA_v46' }
   };
 }
 async function sendRoundData(payload){
@@ -1388,6 +1394,11 @@ function fullResetLikeButton(){ localStorage.removeItem(STORAGE_KEY); removeAllP
 
 async function finishRoundFlow(courseName){
   if (!players.length) return;
+  
+  // Recalc inden vi bygger payload, så avgHcpGlobal/avgNettoGlobal er friske
+  calculateAvgNetto();
+  calculateAvgHcp();
+
   showToast('Indsender...');
   const errors = [];
   for (const p of players) {
