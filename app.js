@@ -754,12 +754,11 @@ function renderScoreCard(player) {
   // --- Handicap felt i toppen ---
   const hcpRow = document.createElement('div');
   hcpRow.className = 'score-row border-bottom-bold';
-  hcpRow.classList.add('hcp-top'); // <-- NY linje
 
-  /*// Overrider grid-layout for denne ene række
+  // Overrider grid-layout for denne ene række
   hcpRow.style.display = "flex";
   hcpRow.style.alignItems = "center";
-  hcpRow.style.gap = "10px";*/
+  hcpRow.style.gap = "10px";
 
   // Label for spiller hcp (IKKE grid-label!)
   const hcpLabel = document.createElement('span');   // <-- vigtigt: span, ikke div.label
@@ -779,13 +778,10 @@ function renderScoreCard(player) {
 
   // Label foran gennemsnit
   const avgHcpLabel = document.createElement('span');
-  avgHcpLabel.textContent = 'Gennemsnit hcp bold: ';
-  avgHcpLabel.classList.add('avg-hcp-label'); // <-- NY linje
+  avgHcpLabel.textContent = 'Gennemsnit hcp bold:';
   avgHcpLabel.style.fontWeight = '700';
   avgHcpLabel.style.whiteSpace = 'nowrap';
-  //avgHcpLabel.style.alignItems = 'center';
-  //avgHcpLabel.style.gab = '10px';
-  //avgHcpLabel.style.marginLeft = "auto";
+  avgHcpLabel.style.marginLeft = "auto";
 
   // Selve gennemsnittet
   const avgHcpEl = document.createElement('span');

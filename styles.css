@@ -328,28 +328,3 @@ body.empty-state #addPlayerBtn { position: fixed;
 .mt-4{ margin-top:1rem; }
 .mt-2{ margin-top:.5rem; }
 .mb-2{ margin-bottom:.5rem; }
-
-/* HCP-toprække: behold samme grid som øvrige rækker, så kolonne 2 flugter */
-.score-row.hcp-top {
-  /* Match de globale værdier, så spalterne flugter */
-  grid-template-columns: 6.5rem 6rem 1fr 2.2rem;
-  /*column-gap: .10rem;             /* <- Samme som .score-row */
-}
-
-/* Giv labelen “Gennemsnit hcp bold” lidt luft uden at flytte kolonne 2 */
-.score-row.hcp-top .avg-hcp-label {
-  white-space: nowrap;
-  margin-left: 9rem;            /* ekstra luft til højre for inputtet */
-  justify-self: start;            /* labelen starter i kolonne 3 */
-}
-
-/* Flyt tallet tættere på teksten "Gennemsnit hcp bold" */
-.score-row.hcp-top .avg-hcp-val {
-  margin-left: -8rem;   /* justér efter smag */
-}
-
-
-/* På meget små mobiler kan du give en anelse mere luft */
-@media (max-width:420px){
-  .score-row.hcp-top .avg-hcp-label { margin-left: 1rem; }
-}
