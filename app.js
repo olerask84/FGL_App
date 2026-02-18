@@ -1390,7 +1390,17 @@ function queueDrain(){
     })();
   } catch {}
 }
-function fullResetLikeButton(){ localStorage.removeItem(STORAGE_KEY); removeAllPlayers(); calStorage.removeItem(BEST_BOLD_KEY); bestBoldEnabled = false; }
+
+function fullResetLikeButton(){
+    localStorage.removeItem(STORAGE_KEY);
+    removeAllPlayers();
+    localStorage.removeItem(BEST_BOLD_KEY);
+    bestBoldEnabled = false;
+
+    // Opdater UI direkte
+    document.querySelectorAll('input.bestbold-toggle').forEach(cb => cb.checked = false);
+}
+
 
 async function finishRoundFlow(courseName){
   if (!players.length) return;
