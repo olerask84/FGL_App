@@ -141,7 +141,7 @@ body.empty-state #addPlayerBtn { position: fixed;
 .menu-heading {
  padding: .55rem .7rem;
  font-weight: 700;
- color: var(--muted);
+ color: var(--ink);
  font-size: .9rem;
  text-transform: uppercase;
  border-bottom: 1px solid var(--border);
@@ -328,3 +328,7 @@ body.empty-state #addPlayerBtn { position: fixed;
 .mt-4{ margin-top:1rem; }
 .mt-2{ margin-top:.5rem; }
 .mb-2{ margin-bottom:.5rem; }
+
+.sheet-viewer-content iframe {
+    -webkit-overflow-scrolling: touch;
+}

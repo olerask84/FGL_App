@@ -1561,50 +1561,79 @@ function closeMenu() {
   document.body.classList.remove('modal-open');
 }
 function renderMenuList() {
-  const tabs = getAvailableTabsFromPlayers();
-  menuList.innerHTML = ''; // Nulstil listen
+    menuList.innerHTML = "";
 
-  // Overskrift for bødekort
-  const headingFines = document.createElement('div');
-  headingFines.className = 'menu-heading';
-  headingFines.textContent = 'Bøde Kort:';
-  menuList.appendChild(headingFines);
-
-  if (!tabs.length) {
-    const item = document.createElement('div');
-    item.className = 'menu-item';
-    item.innerHTML = `<span class="name">Ingen faner fundet</span>`;
-    menuList.appendChild(item);
-  } else {
-    const frag = document.createDocumentFragment();
-    tabs.forEach(name => {
-      const row = document.createElement('div');
-      row.className = 'menu-item';
-      const left = document.createElement('div');
-      left.className = 'name';
-      left.textContent = name;
-      row.append(left);
-      row.addEventListener('click', () => { closeMenu(); openSheetViewer(name); });
-      frag.appendChild(row);
+    /* --- NY: STLLING --- */
+    const standingItem = document.createElement("div");
+    standingItem.className = "menu-item";
+    standingItem.innerHTML = `<div class="name">Stilling</div>`;
+    standingItem.addEventListener("click", () => {
+        closeMenu();
+        openGoogleViewerScore("Scores"); // <-- viser Scores-arket som ønsket
     });
-    menuList.appendChild(frag);
-  }
+    menuList.appendChild(standingItem);
 
-  // Overskrift for lodtrækning
-  const headingLottery = document.createElement('div');
-  headingLottery.className = 'menu-heading';
-  headingLottery.textContent = 'Lodtrækning:';
-  menuList.appendChild(headingLottery);
+    /* --- BØDE KORT OVERSKRIFT --- */
+    const fineHeader = document.createElement("div");
+    fineHeader.className = "menu-heading collapsible";
+    fineHeader.textContent = "Bøde Kort ▸";
+    fineHeader.style.cursor = "pointer";
+    menuList.appendChild(fineHeader);
 
-  // Menupunkt for lodtrækning
-  const lotteryItem = document.createElement('div');
-  lotteryItem.className = 'menu-item';
-  lotteryItem.innerHTML = '<div class="name">Vælg spiller</div>';
-  lotteryItem.addEventListener('click', () => {
-    closeMenu();
-    openLotteryPicker();
-  });
-  menuList.appendChild(lotteryItem);
+    /* --- BØDE KORT LISTE (skjult fra start) --- */
+    const fineList = document.createElement("div");
+    fineList.style.display = "none";
+    fineList.style.marginLeft = "12px";
+    fineList.id = "fine-tree";
+    menuList.appendChild(fineList);
+
+    const tabs = getAvailableTabsFromPlayers();
+    if (tabs.length === 0) {
+        const item = document.createElement("div");
+        item.className = "menu-item";
+        item.innerHTML = `<span class="name">Ingen faner fundet</span>`;
+        fineList.appendChild(item);
+    } else {
+        tabs.forEach(name => {
+            const row = document.createElement("div");
+            row.className = "menu-item";
+            row.innerHTML = `<div class="name">${name}</div>`;
+            row.addEventListener("click", () => {
+                closeMenu();
+                openSheetViewer(name);
+                
+                /*if (name.toLowerCase() === "total") {
+                        openGoogleViewerTotal(name);
+                    } else {
+                        openSheetViewer(name);
+                    }*/
+            });
+            fineList.appendChild(row);
+        });
+    }
+
+    /* --- Fold/udfold logik --- */
+    let isOpen = false;
+    fineHeader.addEventListener("click", () => {
+        isOpen = !isOpen;
+        fineList.style.display = isOpen ? "block" : "none";
+        fineHeader.textContent = isOpen ? "Bøde Kort ▼" : "Bøde Kort ▸";
+    });
+
+    /* --- LODTRÆKNING --- */
+    /*const lotteryHeader = document.createElement("div");
+    lotteryHeader.className = "menu-heading";
+    lotteryHeader.textContent = "Lodtrækning:";
+    menuList.appendChild(lotteryHeader);*/
+
+    const lotteryItem = document.createElement("div");
+    lotteryItem.className = "menu-item";
+    lotteryItem.innerHTML = `<div class="name">Lodtrækning</div>`;
+    lotteryItem.addEventListener("click", () => {
+        closeMenu();
+        openLotteryPicker(); // direkte lodtrækning
+    });
+    menuList.appendChild(lotteryItem);
 }
 
 
@@ -1867,4 +1896,61 @@ if ('serviceWorker' in navigator) {
     })
     .catch((err) => console.error('SW registration failed:', err));
   */
+}
+
+/*function openGoogleViewer(tabName) {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=0&widget=true&headers=false`;
+
+    sheetViewerTitle.textContent = tabName;
+    sheetViewer.classList.remove("hidden");
+
+    sheetViewerContent.innerHTML = `
+        <iframe src="${url}" 
+                style="width:100%; height:90vh; border:0;"></iframe>`;
+}*/
+
+function openGoogleViewerScore(tabName) {
+    // Hvis du har GID for Scores fanen, sæt den ind her:
+    const gid = "197525474"; // ← SKIFT til rigtig GID for Scores fanen
+
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}`;
+
+    sheetViewerTitle.textContent = tabName;
+    sheetViewer.classList.remove("hidden");
+
+    sheetViewerContent.innerHTML = `
+        <iframe 
+            src="${url}" 
+            style="
+                width:100%;
+                height: calc(100vh - 60px);
+                border:0;
+                overflow:auto;
+                background:white;
+            ">
+        </iframe>
+    `;
+}
+
+function openGoogleViewerTotal(tabName) {
+    // Hvis du har GID for Scores fanen, sæt den ind her:
+    const gid = "408277632"; // ← SKIFT til rigtig GID for Scores fanen
+
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}`;
+
+    sheetViewerTitle.textContent = tabName;
+    sheetViewer.classList.remove("hidden");
+
+    sheetViewerContent.innerHTML = `
+        <iframe 
+            src="${url}" 
+            style="
+                width:100%;
+                height: calc(100vh - 60px);
+                border:0;
+                overflow:auto;
+                background:white;
+            ">
+        </iframe>
+    `;
 }
