@@ -374,3 +374,28 @@ body.viewer-stilling {
 body.viewer-stilling::before {
   display: none !important;   /* fjern mønsteret helt – ikke kun opacity */
 }
+
+/* KUN når Stilling (Scores) er åben: gør viewer-området kant-til-kant */
+.sheet-viewer.is-stilling .sheet-viewer-content {
+  padding: 0;
+  position: relative;     /* for top-masken */
+  overflow: hidden;       /* skjul evt. 1px fra iframens top */
+  background: #fff;
+}
+
+/* Top-masken: dækker 2px (kan justeres) for at eliminere den synlige streg */
+.sheet-viewer.is-stilling .sheet-viewer-content::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;            /* prøv 2–3px hvis din enhed stadig viser en streg */
+  background: #fff;
+  z-index: 2;
+}
+
+/* Sørg for at iframen ikke introducerer egne gaps */
+.sheet-viewer .iframe-wrap iframe {
+  display: block;         /* fjerner inline-iframes baseline-gap */
+}
