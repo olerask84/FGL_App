@@ -332,3 +332,36 @@ body.empty-state #addPlayerBtn { position: fixed;
 .sheet-viewer-content iframe {
     -webkit-overflow-scrolling: touch;
 }
+
+/* Fjern linjen under viewer-headeren KUN når "Stilling" (Scores) vises */
+.sheet-viewer.is-stilling .sheet-viewer-header {
+  border-bottom: 0;
+}
+
+/* (Valgfrit) Skjul topbarens bundkant kun når Stilling-viewer er åben,
+   så der ikke anes en linje bag overlayet */
+body.modal-open.viewer-stilling .topbar {
+  border-bottom: 0;
+}
+
+/* Wrapper for at kunne lægge en maske over bunden af iframen */
+.iframe-wrap {
+  position: relative;
+}
+
+/* Maskér (og blokér klik) i bunden, hvor ark-vælgeren ligger */
+.hide-tabs-bottom::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  /* Justér højden så den dækker fanelinjen (typisk 28–40px afhængig af zoom) */
+  height: 40px;
+
+  background: white;           /* samme som sheetets baggrund */
+  pointer-events: auto;        /* blokér klik på tabs under masken */
+  z-index: 2;
+  box-shadow: 0 -1px 0 rgba(0,0,0,0.05); /* diskret overgang, valgfrit */
+}

@@ -322,10 +322,16 @@ function openSheetViewer(tabName) {
     }
   })();
 }
+
 function closeSheetViewer() {
   sheetViewer.classList.add('hidden');
   sheetViewerContent.innerHTML = '';
+
+  // NYT: fjern markører
+  sheetViewer.classList.remove('is-stilling');
+  document.body.classList.remove('viewer-stilling');
 }
+
 
 // Renders tabellen – stickyTopRows=true => KUN 1 header-række i <thead>
 function renderArrayAsHtmlTable(arr, opts = {}) {
@@ -1910,27 +1916,28 @@ if ('serviceWorker' in navigator) {
 }*/
 
 function openGoogleViewerScore(tabName) {
-    // Hvis du har GID for Scores fanen, sæt den ind her:
-    const gid = "197525474"; // ← SKIFT til rigtig GID for Scores fanen
+  const gid = "197525474"; // Scores fanens GID
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}`;
+  
+  sheetViewerTitle.textContent = tabName;
+  sheetViewer.classList.remove("hidden");
 
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}`;
+  // NYT: markér at viewer viser "Stilling"/Scores (iframe)
+  sheetViewer.classList.add("is-stilling");
+  document.body.classList.add("viewer-stilling");
 
-    sheetViewerTitle.textContent = tabName;
-    sheetViewer.classList.remove("hidden");
+  
+  sheetViewerContent.innerHTML = `
+    <div class="iframe-wrap hide-tabs-bottom">
+      <iframe
+        src="${url}"
+        style="width:100%; height: calc(100vh - 60px); border:0; overflow:auto; background:white;">
+      </iframe>
+    </div>
+  `;
 
-    sheetViewerContent.innerHTML = `
-        <iframe 
-            src="${url}" 
-            style="
-                width:100%;
-                height: calc(100vh - 60px);
-                border:0;
-                overflow:auto;
-                background:white;
-            ">
-        </iframe>
-    `;
 }
+
 
 function openGoogleViewerTotal(tabName) {
     // Hvis du har GID for Scores fanen, sæt den ind her:
