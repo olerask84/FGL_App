@@ -365,3 +365,12 @@ body.modal-open.viewer-stilling .topbar {
   z-index: 2;
   box-shadow: 0 -1px 0 rgba(0,0,0,0.05); /* diskret overgang, valgfrit */
 }
+
+/* Når Stilling (Scores) viewer er åben: fjern AL baggrund og undgå 1px gap */
+body.viewer-stilling {
+  background: #fff !important;
+}
+
+body.viewer-stilling::before {
+  display: none !important;   /* fjern mønsteret helt – ikke kun opacity */
+}
