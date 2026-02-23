@@ -1925,14 +1925,21 @@ function openGoogleViewerScore(tabName) {
   // NYT: markér at viewer viser "Stilling"/Scores (iframe)
   sheetViewer.classList.add("is-stilling");
   document.body.classList.add("viewer-stilling");
-
   
   sheetViewerContent.innerHTML = `
     <div class="iframe-wrap hide-tabs-bottom">
       <iframe
-        src="${url}"
-        style="width:100%; height: calc(100vh - 60px); border:0; overflow:auto; background:white;">
-      </iframe>
+          src="${url}"
+          style="
+            display:block;
+            width:100%;
+            /* 100dvh = mobil-sikkert viewport; +1px eliminerer rounding-gaps */
+            height: calc(100dvh - var(--viewer-header-h, 60px) + 1px);
+            border:0;
+            background:#fff;
+            margin:0; padding:0;
+          ">
+        </iframe>
     </div>
   `;
 
