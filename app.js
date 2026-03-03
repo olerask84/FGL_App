@@ -767,8 +767,13 @@ function renderScoreCard(player) {
 
   // Inputfelt
   const hcpInput = document.createElement('input');
-  hcpInput.type = 'text';
+  //hcpInput.type = 'text';
+  //hcpInput.inputMode = 'decimal';
+  
+  hcpInput.type = 'number';
   hcpInput.inputMode = 'decimal';
+  hcpInput.step = '0.1'
+  
   hcpInput.min = 0;
   hcpInput.value = player.score.hcp ? player.score.hcp : "";
   hcpInput.addEventListener('change', () => {
@@ -913,9 +918,15 @@ function renderScoreCard(player) {
   hcpOutLab.className = 'label';
   hcpOutLab.textContent = 'Slag ud';
   const hcpOutInput = document.createElement('input');
-  hcpOutInput.type = 'text';
+  
+  hcpOutInput.type = 'number';
   hcpOutInput.inputMode = 'numeric';
   hcpOutInput.pattern = '[0-9]*';
+  hcpOutInput.step = '1';
+  
+  //hcpOutInput.type = 'text';
+  //hcpOutInput.inputMode = 'numeric';
+  //hcpOutInput.pattern = '[0-9]*';
   hcpOutInput.min = 0;
   hcpOutInput.value = player.score?.hcpOut ? player.score?.hcpOut : "";
   hcpOutInput.addEventListener('change', () => {
@@ -965,9 +976,15 @@ function renderScoreCard(player) {
   hcpInLab.className = 'label';
   hcpInLab.textContent = 'Slag ind';
   const hcpInInput = document.createElement('input');
-  hcpInInput.type = 'text';
+  
+  hcpInInput.type = 'number';
   hcpInInput.inputMode = 'numeric';
   hcpInInput.pattern = '[0-9]*';
+  hcpInInput.step = '1';
+
+  //hcpInInput.type = 'text';
+  //hcpInInput.inputMode = 'numeric';
+  //hcpInInput.pattern = '[0-9]*';
   hcpInInput.min = 0;
   hcpInInput.value = player.score?.hcpIn ? player.score?.hcpIn : "";
   hcpInInput.addEventListener('change', () => {
