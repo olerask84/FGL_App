@@ -332,3 +332,20 @@ body.empty-state #addPlayerBtn { position: fixed;
 .sheet-viewer-content iframe {
     -webkit-overflow-scrolling: touch;
 }
+
+/* Viewer til Stilling (Scores) uden sticky linjer */
+.sheet-viewer-score table {
+  border-collapse: collapse;
+}
+
+.sheet-viewer-score th,
+.sheet-viewer-score td {
+  border: 1px solid var(--border);
+  padding: .4rem .45rem;
+  background: #fff;
+}
+
+.sheet-viewer-score thead th {
+  background: #eef4ff;
+  position: static !important;  /* VIGTIGT: ingen sticky */
+}

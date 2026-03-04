@@ -378,7 +378,8 @@ function openSheetViewer(tabName) {
         stickyFirstCol: sticky,
         stickyTopRows:  sticky // kun 1 sticky-række i <thead>
       });
-      sheetViewerContent.innerHTML = html;
+      //sheetViewerContent.innerHTML = html;
+      sheetViewerContent.innerHTML = `<div class="sheet-viewer-score">${html}</div>`;
       // (Ingen initStickyViewerTables nødvendig, da vi kun fryser 1 række)
     } catch (err) {
       sheetViewerContent.innerHTML = `
@@ -2059,16 +2060,18 @@ function openGoogleViewerScore(tabName) {
     sheetViewer.classList.remove("hidden");
 
     sheetViewerContent.innerHTML = `
-        <iframe 
-            src="${url}" 
-            style="
-                width:100%;
-                height: calc(100vh - 60px);
-                border:0;
-                overflow:auto;
-                background:white;
-            ">
+      <div class="sheet-viewer-score">
+        <iframe
+          src="${url}"
+          style="
+            width:100%;
+            height: calc(100vh - 60px);
+            border:0;
+            overflow:auto;
+            background:white;
+          ">
         </iframe>
+      </div>
     `;
 }
 
