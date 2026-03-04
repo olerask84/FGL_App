@@ -349,3 +349,26 @@ body.empty-state #addPlayerBtn { position: fixed;
   background: #eef4ff;
   position: static !important;  /* VIGTIGT: ingen sticky */
 }
+
+/* Ren viewer til Stilling (Scores) */
+.sheet-viewer-clean {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 1500;
+  background: white !important; /* vigtig */
+}
+
+/* Fjern baggrundsbillede / overlay */
+.sheet-viewer-clean::before {
+  display: none !important;
+}
+
+/* Indhold wrapper */
+.sheet-viewer-clean-content {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+  background: white !important;
+}

@@ -357,6 +357,11 @@ function openSheetViewer(tabName) {
   sheetViewerTitle.textContent = tabName;
   sheetViewerContent.innerHTML = '<div class="sheet-empty">Indlæser…</div>';
   sheetViewer.classList.remove('hidden');
+
+  // VIGTIGT: Sørg for at denne viewer IKKE er "clean" (så Total får sticky tilbage)
+  sheetViewer.classList.remove('sheet-viewer-clean');
+  sheetViewerContent.classList.remove('sheet-viewer-clean-content');
+
   if (!navigator.onLine) {
     sheetViewerContent.innerHTML = `
       <div class="sheet-offline">
@@ -376,11 +381,9 @@ function openSheetViewer(tabName) {
       const sticky = tabName.toLowerCase() === 'total';
       const html = renderArrayAsHtmlTable(table, {
         stickyFirstCol: sticky,
-        stickyTopRows:  sticky // kun 1 sticky-række i <thead>
+        stickyTopRows: sticky
       });
-      //sheetViewerContent.innerHTML = html;
-      sheetViewerContent.innerHTML = `<div class="sheet-viewer-score">${html}</div>`;
-      // (Ingen initStickyViewerTables nødvendig, da vi kun fryser 1 række)
+      sheetViewerContent.innerHTML = html;
     } catch (err) {
       sheetViewerContent.innerHTML = `
         <div class="sheet-offline">
@@ -389,10 +392,21 @@ function openSheetViewer(tabName) {
     }
   })();
 }
+
 function closeSheetViewer() {
   sheetViewer.classList.add('hidden');
+
+  // Ryd ALT state/klasser der kan være sat fra en tidligere visning
+  sheetViewer.classList.remove('sheet-viewer-clean');
+  sheetViewerContent.classList.remove('sheet-viewer-clean-content');
+  sheetViewerTitle.textContent = '';
   sheetViewerContent.innerHTML = '';
 }
+
+/*function closeSheetViewer() {
+  sheetViewer.classList.add('hidden');
+  sheetViewerContent.innerHTML = '';
+}*/
 
 // Renders tabellen – stickyTopRows=true => KUN 1 header-række i <thead>
 function renderArrayAsHtmlTable(arr, opts = {}) {
@@ -2050,7 +2064,7 @@ if ('serviceWorker' in navigator) {
                 style="width:100%; height:90vh; border:0;"></iframe>`;
 }*/
 
-function openGoogleViewerScore(tabName) {
+/*function openGoogleViewerScore(tabName) {
     // Hvis du har GID for Scores fanen, sæt den ind her:
     const gid = "197525474"; // ← SKIFT til rigtig GID for Scores fanen
 
@@ -2073,6 +2087,35 @@ function openGoogleViewerScore(tabName) {
         </iframe>
       </div>
     `;
+}*/
+
+function openGoogleViewerScore(tabName) {
+  // Titel
+  sheetViewerTitle.textContent = tabName;
+
+  // Vis viewer
+  sheetViewer.classList.remove('hidden');
+
+  // Gør denne visning "ren"
+  sheetViewer.classList.add('sheet-viewer-clean');
+  sheetViewerContent.classList.add('sheet-viewer-clean-content');
+
+  // Indlejret Google viewer (Scores/GID)
+  const gid = "197525474"; // behold din eksisterende GID
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}`;
+
+  sheetViewerContent.innerHTML = `
+    <iframe
+      src="${url}"
+      style="
+        width:100%;
+        height: calc(100vh - 60px);
+        border:0;
+        overflow:auto;
+        background:white;
+      ">
+    </iframe>
+  `;
 }
 
 function openGoogleViewerTotal(tabName) {
