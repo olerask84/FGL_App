@@ -91,6 +91,62 @@ const lotteryResultContent = document.getElementById('lotteryResultContent');
 const lotteryResultClose = document.getElementById('lotteryResultClose');
 let lotteryPickerSelected = new Set();
 
+// --- CSV PARSER (simpel og hurtig) ---
+function parseCSV(text) {
+  return text
+    .trim()
+    .split(/\r?\n/)
+    .map(line => line.split(','));
+}
+
+async function fetchSheetPlayersFromNetwork() {
+  return await fetchPlayersCSV();
+}
+
+async function fetchFinesFromNetwork() {
+  return await fetchFinesCSV();
+}
+
+/*async function fetchPlayersCSV() {
+  const url =
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` +
+    `&range=A:B&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error("CSV fejl (A:B)");
+
+  const text = await resp.text();
+  const rows = parseCSV(text);
+
+  // Fjern header og lav struktur som din app forventer
+  return rows.slice(1).map(r => ({
+    navn: r[0] ?? "",
+    faneNavn: r[1] ?? r[0] ?? ""
+  })).filter(r => r.navn);
+}
+
+async function fetchFinesCSV() {
+  const url =
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` +
+    `&range=D:F&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error("CSV fejl (D:F)");
+
+  const text = await resp.text();
+  const rows = parseCSV(text);
+
+  const data = rows.slice(1); // uden header
+
+  return data
+    .filter(r => r[0]) // kun rækker med navn
+    .map(r => ({
+      id: slugify(r[0]),
+      name: r[0],
+      value: Number(r[1] ?? 0),
+      type: (r[2] ?? "").toLowerCase()
+    }));
+}*/
 
 // Udled unikke faner fra Spiller-arket
 function getAvailableTabsFromPlayers() {
