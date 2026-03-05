@@ -211,7 +211,7 @@ function debounce(fn, wait) {
 }
 
 // Robust GViz-parser uden regex
-function parseGViz(text) {
+/*function parseGViz(text) {
   const anchor = text.indexOf('setResponse');
   if (anchor === -1) throw new Error('Kunne ikke parse gviz-svar');
   const start = text.indexOf('{', anchor);
@@ -236,7 +236,7 @@ function parseGViz(text) {
   if (depth !== 0) throw new Error('Ugyldigt gviz-svar (ubalanserede {})');
   const jsonStr = text.slice(start, i);
   return JSON.parse(jsonStr);
-}
+}*/
 
 // ---------------- Players: cache & fetch ----------------
 function loadSheetCache(){
@@ -256,7 +256,7 @@ function calcListHash(list){
   return hashString(JSON.stringify(norm));
 }
 
-async function fetchSheetPlayersFromNetwork(){
+/*async function fetchSheetPlayersFromNetwork(){
   sheetLoadError = null;
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
   const where = SHEET_GID
@@ -300,7 +300,7 @@ async function fetchSheetPlayersFromNetwork(){
     if (navn) result.push({ navn, faneNavn: fane || navn });
   }
   return result;
-}
+}*/
 
 async function refreshSheetPlayersIfOnline(minAgeMs = 0){
   const { meta } = loadSheetCache();
@@ -445,7 +445,7 @@ function calcFinesHash(list){
   return hashString(JSON.stringify(norm));
 }
 
-async function fetchFinesFromNetwork(){
+/*async function fetchFinesFromNetwork(){
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
   const where = SHEET_GID
     ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
@@ -518,7 +518,7 @@ async function fetchFinesFromNetwork(){
     list.push(item);
   }
   return list;
-}
+}*/
 
 async function refreshFinesIfOnline(minAgeMs = 0){
   const { meta } = loadFinesCache();
