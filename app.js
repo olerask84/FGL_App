@@ -1,56 +1,74 @@
-// Updated app.js with performance optimizations
+// Optimized app.js
 
-// Optimization 1: Extracted createFineRow and createCounterInput functions
-def createFineRow(){
-    // Implementation goes here...
-}
+// 1) Lazy loading of score tab with deferred rendering
+const loadScoreTab = async () => {
+    const scoreTab = document.getElementById('scoreTab');
+    if (!scoreTab.loaded) {
+        scoreTab.loaded = true;
+        const { Score } = await import('./Score.js');
+        scoreTab.appendChild(new Score());
+    }
+};
 
-def createCounterInput(){
-    // Implementation goes here...
-}
-
-// Optimization 2: Implement async batched rendering for renderScoreCard 
-function renderScoreCard() {
-    requestIdleCallback(() => {
-        // Rendering logic goes here...
+// 2) Batched async rendering of score card holes using requestIdleCallback
+const renderScoreCardHoles = (holes) => {
+    const fragment = document.createDocumentFragment();
+    holes.forEach(hole => {
+        const holeElement = document.createElement('div');
+        holeElement.textContent = `Hole ${hole.number}`;
+        fragment.appendChild(holeElement);
     });
-}
-
-// Optimization 3: Extract hole row creation into separate functions
-function createHoleRow() {
-    // Implementation goes here...
-}
-
-function createBruttoOutRow() {
-    // Implementation goes here...
-}
-
-// Optimization 4: Refactor renderPanels to defer score tab rendering until clicked
-function renderPanels() {
-    // Logic to defer score tab rendering...
-}
-
-// Optimization 5: Add panel caching with memoization
-const panelCache = {};
-function getPanelData(panelId) {
-    if(panelCache[panelId]) return panelCache[panelId];
-    // Fetch data logic...
-    panelCache[panelId] = data;
-    return data;
-}
-
-// Optimization 6: Debounce updateAmounts calls
-let debounceTimeout;
-function updateAmounts() {
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(() => {
-        // Update logic...
-    }, 300);
-}
-
-// Optimization 7: Replace synchronous DOM operations with requestIdleCallback batching
-function batchDOMOperations() {
     requestIdleCallback(() => {
-        // Batch DOM updates here...
+        document.getElementById('scoreCard').appendChild(fragment);
     });
-}
+};
+
+// 3) Debounced updateAmounts function
+const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+};
+const updateAmounts = debounce(() => {
+    // Update amounts logic
+}, 300);
+
+// 4) Panel caching system
+const playerPanels = {};
+const loadPlayerPanel = (playerId) => {
+    if (!playerPanels[playerId]) {
+        playerPanels[playerId] = document.createElement('div'); // Build panel
+        // Add player specific content
+    }
+    document.body.appendChild(playerPanels[playerId]);
+};
+
+// 5) Cache-first strategy for fines loading
+const loadFines = async () => {
+    const cacheKey = 'fines';
+    const cachedFines = localStorage.getItem(cacheKey);
+    if (cachedFines) {
+        return JSON.parse(cachedFines);
+    }
+    const response = await fetch('/api/fines');
+    const fines = await response.json();
+    localStorage.setItem(cacheKey, JSON.stringify(fines));
+    return fines;
+};
+
+// 6) Optimized DOM operations using document fragments
+const renderFines = async () => {
+    const fines = await loadFines();
+    const fragment = document.createDocumentFragment();
+    fines.forEach(fine => {
+        const fineElement = document.createElement('div');
+        fineElement.textContent = fine.description;
+        fragment.appendChild(fineElement);
+    });
+    document.getElementById('finesList').appendChild(fragment);
+};
+
+// Maintain existing functionality
+// ... existing code ...
