@@ -91,62 +91,6 @@ const lotteryResultContent = document.getElementById('lotteryResultContent');
 const lotteryResultClose = document.getElementById('lotteryResultClose');
 let lotteryPickerSelected = new Set();
 
-// --- CSV PARSER (simpel og hurtig) ---
-function parseCSV(text) {
-  return text
-    .trim()
-    .split(/\r?\n/)
-    .map(line => line.split(','));
-}
-
-async function fetchSheetPlayersFromNetwork() {
-  return await fetchPlayersCSV();
-}
-
-async function fetchFinesFromNetwork() {
-  return await fetchFinesCSV();
-}
-
-async function fetchPlayersCSV() {
-  const url =
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` +
-    `&range=A:B&sheet=${encodeURIComponent(SHEET_NAME)}`;
-
-  const resp = await fetch(url, { cache: 'no-store' });
-  if (!resp.ok) throw new Error("CSV fejl (A:B)");
-
-  const text = await resp.text();
-  const rows = parseCSV(text);
-
-  // Fjern header og lav struktur som din app forventer
-  return rows.slice(1).map(r => ({
-    navn: r[0] ?? "",
-    faneNavn: r[1] ?? r[0] ?? ""
-  })).filter(r => r.navn);
-}
-
-async function fetchFinesCSV() {
-  const url =
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` +
-    `&range=D:F&sheet=${encodeURIComponent(SHEET_NAME)}`;
-
-  const resp = await fetch(url, { cache: 'no-store' });
-  if (!resp.ok) throw new Error("CSV fejl (D:F)");
-
-  const text = await resp.text();
-  const rows = parseCSV(text);
-
-  const data = rows.slice(1); // uden header
-
-  return data
-    .filter(r => r[0]) // kun rækker med navn
-    .map(r => ({
-      id: slugify(r[0]),
-      name: r[0],
-      value: Number(r[1] ?? 0),
-      type: (r[2] ?? "").toLowerCase()
-    }));
-}
 
 // Udled unikke faner fra Spiller-arket
 function getAvailableTabsFromPlayers() {
@@ -201,17 +145,8 @@ function hashString(str) {
   return (h>>>0).toString(16);
 }
 
-// --- Utils: debounce (NY) ---
-function debounce(fn, wait) {
-  let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn.apply(null, args), wait);
-  };
-}
-
 // Robust GViz-parser uden regex
-/*function parseGViz(text) {
+function parseGViz(text) {
   const anchor = text.indexOf('setResponse');
   if (anchor === -1) throw new Error('Kunne ikke parse gviz-svar');
   const start = text.indexOf('{', anchor);
@@ -236,7 +171,7 @@ function debounce(fn, wait) {
   if (depth !== 0) throw new Error('Ugyldigt gviz-svar (ubalanserede {})');
   const jsonStr = text.slice(start, i);
   return JSON.parse(jsonStr);
-}*/
+}
 
 // ---------------- Players: cache & fetch ----------------
 function loadSheetCache(){
@@ -256,15 +191,14 @@ function calcListHash(list){
   return hashString(JSON.stringify(norm));
 }
 
-/*async function fetchSheetPlayersFromNetwork(){
+async function fetchSheetPlayersFromNetwork(){
   sheetLoadError = null;
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
   const where = SHEET_GID
     ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
     : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
   const url = `${where}&range=A:B&headers=1`;
-  //const resp = await fetch(url, { cache: 'no-store' });
-  const resp = await fetch(url);
+  const resp = await fetch(url, { cache: 'no-store' });
   if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
   const text = await resp.text();
 
@@ -300,7 +234,7 @@ function calcListHash(list){
     if (navn) result.push({ navn, faneNavn: fane || navn });
   }
   return result;
-}*/
+}
 
 async function refreshSheetPlayersIfOnline(minAgeMs = 0){
   const { meta } = loadSheetCache();
@@ -445,15 +379,14 @@ function calcFinesHash(list){
   return hashString(JSON.stringify(norm));
 }
 
-/*async function fetchFinesFromNetwork(){
+async function fetchFinesFromNetwork(){
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
   const where = SHEET_GID
     ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
     : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
   const url = `${where}&range=D:F&headers=1`;
 
-  //const resp = await fetch(url, { cache: 'no-store' });
-  const resp = await fetch(url);
+  const resp = await fetch(url, { cache: 'no-store' });
   if (!resp.ok) throw new Error(`Bøder: hentning fejlede (${resp.status})`);
   const text = await resp.text();
 
@@ -518,7 +451,7 @@ function calcFinesHash(list){
     list.push(item);
   }
   return list;
-}*/
+}
 
 async function refreshFinesIfOnline(minAgeMs = 0){
   const { meta } = loadFinesCache();
@@ -681,62 +614,66 @@ function buildTableForPlayer(p){
   const thead = document.createElement('thead'); thead.innerHTML = `<tr><th>Bøder:</th><th class="count">Antal:</th><th class="amount">Beløb:</th></tr>`; table.appendChild(thead);
   const tbody = document.createElement('tbody');
   let sectionBreakInserted = false;
-  const fragRows = document.createDocumentFragment(); // NY
-
   FINES.forEach((fine) => {
     const tr = document.createElement('tr');
-
-    const tdLabel = document.createElement('td');
-    tdLabel.className = 'row-label';
-    tdLabel.textContent = fine.name;
-
-    const tdCount = document.createElement('td');
-    tdCount.className = 'count';
-
-    const tdAmt = document.createElement('td');
-    tdAmt.className = 'amount';
-
+    const tdLabel = document.createElement('td'); tdLabel.className = 'row-label'; tdLabel.textContent = fine.name;
+    const tdCount = document.createElement('td'); tdCount.className = 'count';
+    const tdAmt = document.createElement('td'); tdAmt.className = 'amount';
+    
     if (fine.type === 'one') {
+      // PASSIV række: ingen kontrol i tdCount
       tdCount.textContent = '-';
+
     } else if (fine.type === 'count') {
       const wrap = document.createElement('div'); wrap.className = 'counter';
       const minus = document.createElement('button'); minus.className = 'iconbtn minus'; minus.textContent = '−';
-      const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1'; input.className = 'num'; input.value = p.rows[fine.id] ?? 0;
+      const input = document.createElement('input');
+      // RETTET LINJE:
+      input.type = 'number'; input.min = '0'; input.step = '1'; input.className = 'num'; input.value = p.rows[fine.id] ?? 0;
       const plus = document.createElement('button'); plus.className = 'iconbtn plus'; plus.textContent = '+';
       wrap.append(minus, input, plus);
-      minus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)-1, 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
+      minus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)-1, 0, 9999);
+      p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       plus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)+1, 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       input.addEventListener('change', () => { input.value = clamp(parseInt(input.value ?? '0',10), 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
       tdCount.appendChild(wrap);
-    } else {
-      const wrap = document.createElement('div');
-      wrap.className = 'counter';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = !!p.rows[fine.id];
-      cb.style.gridColumn = '2';
-      cb.style.justifySelf = 'center';
+      
+      } else {
+        // Brug samme grid som tælleren, og placer checkbox i midterste kolonne
+        const wrap = document.createElement('div');
+        wrap.className = 'counter';               // 3 kolonner: [minus] [midt] [plus]
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!p.rows[fine.id];
+        cb.style.gridColumn = '2';                // midterste kolonne
+        cb.style.justifySelf = 'center';          // centrér i kolonnen
+
+        cb.addEventListener('change', () => {
+          p.rows[fine.id] = cb.checked; savePlayers(players); updateAmounts(table, p);
+        });
+
+        wrap.appendChild(cb);
+        tdCount.appendChild(wrap);
+      }
+      
+   /* } else {
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!p.rows[fine.id];
       cb.addEventListener('change', () => { p.rows[fine.id] = cb.checked; savePlayers(players); updateAmounts(table, p); });
-      wrap.appendChild(cb);
-      tdCount.appendChild(wrap);
-    }
+      tdCount.appendChild(cb);
+    }*/
 
     const amtInput = document.createElement('input');
     amtInput.type = 'text'; amtInput.className = 'amount-field'; amtInput.readOnly = true; amtInput.value = '0'; amtInput.dataset.fineId = fine.id;
     tdAmt.appendChild(amtInput);
-
-    tr.append(tdLabel, tdCount, tdAmt);
-    fragRows.appendChild(tr);
-
+    tr.append(tdLabel, tdCount, tdAmt); tbody.appendChild(tr);
     if (!sectionBreakInserted && fine.id === 'hole-in-one') {
       const gap = document.createElement('tr');
       gap.innerHTML = `<td class="section-gap"></td><td class="section-gap"></td><td class="section-gap"></td>`;
-      fragRows.appendChild(gap);
+      tbody.appendChild(gap);
       sectionBreakInserted = true;
     }
   });
-
-  tbody.appendChild(fragRows); // én samlet append
 
   
 
@@ -1241,18 +1178,10 @@ function renderAvgHcp() {
         .forEach(el => el.textContent = txt);
 }
 
-/*function recalcAndRenderAvgHcp() {
+function recalcAndRenderAvgHcp() {
     calculateAvgHcp();
     renderAvgHcp();
-}*/
-
-// Debounced wrappers (50-100 ms er passende; her 80 ms)
-const _recalcHcpDebounced = debounce(() => { calculateAvgHcp(); renderAvgHcp(); }, 80);
-const _recalcNettoDebounced = debounce(() => { calculateAvgNetto(); renderAvgNetto(); }, 80);
-
-function recalcAndRenderAvgHcp()     { _recalcHcpDebounced(); }
-function recalcAndRenderAvgNetto()   { _recalcNettoDebounced(); }
-
+}
 
 function renderAvgNetto() {
   const txt = avgNettoGlobal.toLocaleString('da-DK', {
@@ -1265,10 +1194,10 @@ function renderAvgNetto() {
     .forEach(el => el.textContent = txt);
 }
 
-/*function recalcAndRenderAvgNetto() {
+function recalcAndRenderAvgNetto() {
   calculateAvgNetto();
   renderAvgNetto();
-}*/
+}
 
 function renderPanels() {
     panelsEl.innerHTML = '';
@@ -1304,44 +1233,6 @@ function renderPanels() {
     btnS.classList.remove('active');
     content.innerHTML = '';
 
-    // 1) Tegn STRAKS fra cache/hukommelse, hvis muligt
-    if (!Array.isArray(FINES) || FINES.length === 0) {
-        const cached = loadFinesCache(); // synkron cache i localStorage
-        if (cached.list?.length) {
-          FINES = cached.list; rebuildFineMap(); migratePlayersForFines();
-          content.appendChild(buildTableForPlayer(p)); // vis UI med det samme
-        } else {
-          // Ingen cache første gang: vis lille note men uden at vente
-          const loading = document.createElement('div');
-          loading.textContent = 'Indlæser bøder…';
-          content.appendChild(loading);
-        }
-
-          // 2) Net-opdater i BAGGRUND (ingen blokering af UI)
-          refreshFinesIfOnline(MIN_REFRESH_INTERVAL_MS).then(({ changed }) => {
-            if (!changed) return;
-            const updated = loadFinesCache().list;
-            if (updated?.length) {
-              FINES = updated; rebuildFineMap(); migratePlayersForFines();
-              content.innerHTML = '';
-              content.appendChild(buildTableForPlayer(p));
-              showToast('Bøder opdateret');
-            }
-          });
-
-          return;
-      }
-
-      // 3) FINES findes allerede i memory => tegn direkte
-      content.appendChild(buildTableForPlayer(p));
-    };
-
-
-    /*const showFines = () => {
-    btnF.classList.add('active');
-    btnS.classList.remove('active');
-    content.innerHTML = '';
-
     // Hvis bøder ikke er indlæst endnu, vis "Indlæser..." og prøv igen
     if (!Array.isArray(FINES) || FINES.length === 0) {
       const loading = document.createElement('div');
@@ -1357,7 +1248,7 @@ function renderPanels() {
     }
 
     content.appendChild(buildTableForPlayer(p));
-  };*/
+  };
 
     const showScore = () => {
         btnS.classList.add('active');
@@ -1975,15 +1866,6 @@ function showToast(msg) {
 
 // ---------------- Init ----------------
 if (players.length > 0) { activePlayerId = players[0].id; }
-  // Warm-load fines fra cache før første render (så første "Bøder" er instant)
-  (() => {
-    try {
-      const cached = loadFinesCache();
-      if (cached.list?.length) {
-        FINES = cached.list; rebuildFineMap(); migratePlayersForFines();
-      }
-    } catch {}
-  })();
 render();
 recalcAndRenderAvgHcp();
 ensureFinesLoaded(MIN_REFRESH_INTERVAL_MS).then(() => { if (players.length) renderPanels(); });
