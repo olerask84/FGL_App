@@ -107,7 +107,7 @@ async function fetchFinesFromNetwork() {
   return await fetchFinesCSV();
 }
 
-/*async function fetchPlayersCSV() {
+async function fetchPlayersCSV() {
   const url =
     `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` +
     `&range=A:B&sheet=${encodeURIComponent(SHEET_NAME)}`;
@@ -146,7 +146,7 @@ async function fetchFinesCSV() {
       value: Number(r[1] ?? 0),
       type: (r[2] ?? "").toLowerCase()
     }));
-}*/
+}
 
 // Udled unikke faner fra Spiller-arket
 function getAvailableTabsFromPlayers() {
