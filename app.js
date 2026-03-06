@@ -599,22 +599,30 @@ function hasDuplicate(displayName, meta){
   }
   return false;
 }
+
 function addPlayer(displayName, meta = null){
   if (!displayName || !displayName.trim()) return;
   if (players.length >= MAX_PLAYERS) { alert(`Du kan højst tilføje ${MAX_PLAYERS} spillere.`); return; }
-  if (hasDuplicate(displayName, meta)) { return;
-}
-  if (!FINES.length) { alert('Bøder indlæses første gang. Prøv igen om et øjeblik (eller gå online).'); return;
-}
-  const p = { id: uid(), name: displayName.trim(), rows: createEmptyRows(), score: { holes: Array(18).fill(0), hcp: 0 }, meta: meta ?? undefined };
-  
+  if (hasDuplicate(displayName, meta)) { return; }
+
+  // Opret med det samme, også hvis FINES endnu ikke er klar:
+  const p = { 
+    id: uid(), 
+    name: displayName.trim(), 
+    rows: createEmptyRows(), // tom hvis FINES ikke er klar
+    score: { holes: Array(18).fill(0), hcp: 0 }, 
+    meta: meta ?? undefined 
+  };
+
   players.push(p);
   activePlayerId = p.id;
   savePlayers(players);
-  // Sørg for at bøder er klar, og tegn først derefter
-  ensureFinesLoaded(0, false).finally(() => render());
 
+  // Tegn straks – opdater bøderne i baggrunden
+  render();
+  refreshFinesInBackground(0, false);
 }
+
 function setActivePlayer(playerId){ activePlayerId = playerId; renderTabs(); renderPanels(); }
 function removeAllPlayers(){ players = []; activePlayerId = null;
 savePlayers(players); render(); }
