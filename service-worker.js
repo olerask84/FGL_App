@@ -86,3 +86,31 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Cacher GViz & htmlview fra Google Sheets
+  const isGViz = url.hostname === 'docs.google.com' && /\/spreadsheets\/d\/.*\/gviz\/tq/.test(url.pathname);
+  const isHtmlView = url.hostname === 'docs.google.com' && /\/spreadsheets\/d\/.*\/htmlview/.test(url.pathname);
+
+  if (isGViz || isHtmlView) {
+    event.respondWith((async () => {
+      const cache = await caches.open('gviz-runtime-v1');
+      const cached = await cache.match(event.request);
+      const networkPromise = fetch(event.request).then(resp => {
+        cache.put(event.request, resp.clone());
+        return resp;
+      }).catch(() => null);
+
+      // Returnér cache straks, og revalider i baggrunden
+      if (cached) {
+        // Kick netværk; svar cache med det samme
+        event.waitUntil(networkPromise);
+        return cached;
+      }
+      // Ingen cache -> prøv netværket (første gangs kald)
+      const live = await networkPromise;
+      return live ?? new Response('Offline', { status: 503 });
+    })());
+  }
+});

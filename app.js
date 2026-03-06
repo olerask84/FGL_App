@@ -198,7 +198,7 @@ async function fetchSheetPlayersFromNetwork(){
     ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
     : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
   const url = `${where}&range=A:B&headers=1`;
-  const resp = await fetch(url, { cache: 'no-store' });
+  const resp = await fetch(url, { cache: 'no-cache' });
   if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
   const text = await resp.text();
 
@@ -258,7 +258,7 @@ async function refreshSheetPlayersIfOnline(minAgeMs = 0){
 async function fetchSheetTabAsTable(tabName){
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
   const url = `${base}&sheet=${encodeURIComponent(tabName)}`;
-  const resp = await fetch(url, { cache: 'no-store' });
+  const resp = await fetch(url, { cache: 'no-cache' });
   if (!resp.ok) throw new Error(`Hentning fejlede (${resp.status})`);
   const text = await resp.text();
 
@@ -386,7 +386,7 @@ async function fetchFinesFromNetwork(){
     : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
   const url = `${where}&range=D:F&headers=1`;
 
-  const resp = await fetch(url, { cache: 'no-store' });
+  const resp = await fetch(url, { cache: 'no-cache' });
   if (!resp.ok) throw new Error(`Bøder: hentning fejlede (${resp.status})`);
   const text = await resp.text();
 
@@ -488,6 +488,34 @@ async function ensureFinesLoaded(minAgeMs = 0, showToastOnChange = true){
     }
   }
   return loaded;
+}
+
+// Ny: læs cache synkront og sæt FINES, returnér om der var noget
+function primeFinesFromCache() {
+  const cached = loadFinesCache();
+  if (cached.list && cached.list.length) {
+    FINES = cached.list;
+    rebuildFineMap();
+    migratePlayersForFines();
+    return true; // vi har data nu
+  }
+  return false; // ingen cache
+}
+
+// Ny: opdatér i baggrunden uden at blokere UI
+function refreshFinesInBackground(minAgeMs = 0, showToastOnChange = true) {
+  refreshFinesIfOnline(minAgeMs).then(({ changed }) => {
+    if (changed) {
+      const updated = loadFinesCache().list;
+      if (updated.length) {
+        FINES = updated;
+        rebuildFineMap();
+        migratePlayersForFines();
+        if (players.length) renderPanels();
+        if (showToastOnChange) showToast('Bøder opdateret');
+      }
+    }
+  }).catch(() => { /* stiltiende */ });
 }
 
 // ---------------- Persistens for spillere ----------------
@@ -1228,27 +1256,35 @@ function renderPanels() {
     content.className = 'subcontent';
     panel.appendChild(content);
 
+    
     const showFines = () => {
-    btnF.classList.add('active');
-    btnS.classList.remove('active');
-    content.innerHTML = '';
+      btnF.classList.add('active');
+      btnS.classList.remove('active');
+      content.innerHTML = '';
 
-    // Hvis bøder ikke er indlæst endnu, vis "Indlæser..." og prøv igen
-    if (!Array.isArray(FINES) || FINES.length === 0) {
+      // Tegn straks hvis vi allerede har FINES
+      if (Array.isArray(FINES) && FINES.length) {
+        content.appendChild(buildTableForPlayer(p));
+        // Kick baggrundsopdatering (ingen venten)
+        refreshFinesInBackground(0, false);
+        return;
+      }
+
+      // Ingen FINES endnu -> prøv cache først
+      const had = primeFinesFromCache();
+      if (had) {
+        content.appendChild(buildTableForPlayer(p));
+        refreshFinesInBackground(0, false);
+        return;
+      }
+
+      // Stadig ingenting -> vis loader og spark netværk i gang
       const loading = document.createElement('div');
       loading.textContent = 'Indlæser bøder…';
       content.appendChild(loading);
+      refreshFinesInBackground(0, false);
+    };
 
-      ensureFinesLoaded(0, false).then(() => {
-        // Tegn igen, når bøderne er kommet
-        content.innerHTML = '';
-        content.appendChild(buildTableForPlayer(p));
-      });
-      return;
-    }
-
-    content.appendChild(buildTableForPlayer(p));
-  };
 
     const showScore = () => {
         btnS.classList.add('active');
@@ -1458,13 +1494,19 @@ function openPicker(){
   pickerSelected = new Set();
   updatePickerConfirm();
 
+  // Vis cache med det samme
   const cached = loadSheetCache();
-  if (cached.list && cached.list.length){ sheetPlayers = cached.list; sheetLoaded = true; renderPickerList(false);
-}
-  else { renderPickerList(true); }
+  if (cached.list && cached.list.length){ 
+    sheetPlayers = cached.list; 
+    sheetLoaded = true; 
+    renderPickerList(false);
+  } else {
+    renderPickerList(true);  // loader-tekst
+  }
 
-  ensureFinesLoaded(0).then(()=>{});
-  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(()=> renderPickerList(false)).catch(()=> renderPickerList(false));
+  // Spark netværksopdatering i baggrunden - uden await
+  refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS)
+    .finally(() => renderPickerList(false));
 }
 function closePicker(){ pickerOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); pickerSelected = new Set();
 }
@@ -1868,7 +1910,12 @@ function showToast(msg) {
 if (players.length > 0) { activePlayerId = players[0].id; }
 render();
 recalcAndRenderAvgHcp();
-ensureFinesLoaded(MIN_REFRESH_INTERVAL_MS).then(() => { if (players.length) renderPanels(); });
+
+const hadFines = primeFinesFromCache();   // tegn straks hvis muligt
+if (players.length) renderPanels();
+refreshFinesInBackground(MIN_REFRESH_INTERVAL_MS); // opdatér i baggrunden
+
+//ensureFinesLoaded(MIN_REFRESH_INTERVAL_MS).then(() => { if (players.length) renderPanels(); });
 
 window.addEventListener('online', () => {
   refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).then(({ changed }) => { if (changed) renderPickerList(false); });
