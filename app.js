@@ -645,85 +645,109 @@ function renderTabs(){
     tabsEl.appendChild(b);
   });
 }
-function buildTableForPlayer(p){
-  const table = document.createElement('table'); table.className = 'table';
-  const thead = document.createElement('thead'); thead.innerHTML = `<tr><th>Bøder:</th><th class="count">Antal:</th><th class="amount">Beløb:</th></tr>`; table.appendChild(thead);
-  const tbody = document.createElement('tbody');
+function buildTableForPlayer(p) {
+  // 1) Byg HTML i én omgang (hurtigere end mange createElement)
+  let rowsHtml = '';
   let sectionBreakInserted = false;
-  FINES.forEach((fine) => {
-    const tr = document.createElement('tr');
-    const tdLabel = document.createElement('td'); tdLabel.className = 'row-label'; tdLabel.textContent = fine.name;
-    const tdCount = document.createElement('td'); tdCount.className = 'count';
-    const tdAmt = document.createElement('td'); tdAmt.className = 'amount';
-    
-    if (fine.type === 'one') {
-      // PASSIV række: ingen kontrol i tdCount
-      tdCount.textContent = '-';
 
-    } else if (fine.type === 'count') {
-      const wrap = document.createElement('div'); wrap.className = 'counter';
-      const minus = document.createElement('button'); minus.className = 'iconbtn minus'; minus.textContent = '−';
-      const input = document.createElement('input');
-      // RETTET LINJE:
-      input.type = 'number'; input.min = '0'; input.step = '1'; input.className = 'num'; input.value = p.rows[fine.id] ?? 0;
-      const plus = document.createElement('button'); plus.className = 'iconbtn plus'; plus.textContent = '+';
-      wrap.append(minus, input, plus);
-      minus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)-1, 0, 9999);
-      p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
-      plus.addEventListener('click', () => { input.value = clamp(parseInt(input.value ?? '0',10)+1, 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
-      input.addEventListener('change', () => { input.value = clamp(parseInt(input.value ?? '0',10), 0, 9999); p.rows[fine.id] = Number(input.value); savePlayers(players); updateAmounts(table, p); });
-      tdCount.appendChild(wrap);
-      
-      } else {
-        // Brug samme grid som tælleren, og placer checkbox i midterste kolonne
-        const wrap = document.createElement('div');
-        wrap.className = 'counter';               // 3 kolonner: [minus] [midt] [plus]
+  for (const fine of FINES) {
+    const fineId = fine.id;
+    const type = fine.type; // 'count' | 'check' | 'derived-check' | 'one'
+    const isCount = type === 'count';
+    const isCheck = (type === 'check' || type === 'derived-check');
+    const isOne   = (type === 'one');
 
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = !!p.rows[fine.id];
-        cb.style.gridColumn = '2';                // midterste kolonne
-        cb.style.justifySelf = 'center';          // centrér i kolonnen
+    const currentVal = p.rows?.[fineId];
+    const countCellHtml = isOne
+      ? `<div class="counter"><span class="num" aria-hidden="true">-</span></div>`
+      : isCount
+        ? `<div class="counter">
+             <button class="iconbtn minus" data-action="dec" aria-label="Minus">−</button>
+             <input class="num" type="number" min="0" step="1" value="${Number(currentVal ?? 0)}" />
+             <button class="iconbtn plus" data-action="inc" aria-label="Plus">+</button>
+           </div>`
+        : `<div class="counter">
+             <input class="selbox" type="checkbox" ${currentVal ? 'checked' : ''} style="grid-column:2;justify-self:center;" />
+           </div>`;
 
-        cb.addEventListener('change', () => {
-          p.rows[fine.id] = cb.checked; savePlayers(players); updateAmounts(table, p);
-        });
+    rowsHtml += `
+      <tr data-fine-id="${fineId}" data-fine-type="${type}">
+        <td class="row-label">${escapeHtml(fine.name)}</td>
+        <td class="count">${countCellHtml}</td>
+        <td class="amount"><input type="text" class="amount-field" readonly value="0" data-fine-id="${fineId}" /></td>
+      </tr>`;
 
-        wrap.appendChild(cb);
-        tdCount.appendChild(wrap);
-      }
-      
-   /* } else {
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!p.rows[fine.id];
-      cb.addEventListener('change', () => { p.rows[fine.id] = cb.checked; savePlayers(players); updateAmounts(table, p); });
-      tdCount.appendChild(cb);
-    }*/
-
-    const amtInput = document.createElement('input');
-    amtInput.type = 'text'; amtInput.className = 'amount-field'; amtInput.readOnly = true; amtInput.value = '0'; amtInput.dataset.fineId = fine.id;
-    tdAmt.appendChild(amtInput);
-    tr.append(tdLabel, tdCount, tdAmt); tbody.appendChild(tr);
-    if (!sectionBreakInserted && fine.id === 'hole-in-one') {
-      const gap = document.createElement('tr');
-      gap.innerHTML = `<td class="section-gap"></td><td class="section-gap"></td><td class="section-gap"></td>`;
-      tbody.appendChild(gap);
+    if (!sectionBreakInserted && fineId === 'hole-in-one') {
+      rowsHtml += `<tr><td class="section-gap"></td><td class="section-gap"></td><td class="section-gap"></td></tr>`;
       sectionBreakInserted = true;
+    }
+  }
+
+  const tableHtml = `
+    <table class="table" data-player-id="${p.id}">
+      <thead>
+        <tr><th>Bøder:</th><th class="count">Antal:</th><th class="amount">Beløb:</th></tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+      <tfoot>
+        <tr>
+          <td class="row-label">At betale:</td>
+          <td></td>
+          <td><input type="text" readonly class="amount-field total-field" id="total-for-${p.id}" value="0" /></td>
+        </tr>
+      </tfoot>
+    </table>`;
+
+  const host = document.createElement('div');
+  host.innerHTML = tableHtml;
+  const table = host.firstElementChild;
+
+  // 2) Én delegated handler til hele tabellen
+  const tbody = table.querySelector('tbody');
+  tbody.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-fine-id]');
+    if (!tr) return;
+    const fineId = tr.dataset.fineId;
+    const type = tr.dataset.fineType;
+
+    // Plus/minus knapper
+    const btn = e.target.closest('button.iconbtn');
+    if (btn && type === 'count') {
+      const input = tr.querySelector('input.num');
+      let v = parseInt(input.value || '0', 10);
+      if (btn.dataset.action === 'inc') v++;
+      if (btn.dataset.action === 'dec') v = Math.max(0, v - 1);
+      input.value = v;
+      p.rows[fineId] = v;
+      savePlayers(players);
+      updateAmounts(table, p);
     }
   });
 
-  
+  // 3) Delegated for ændringer i inputs/checkboxes
+  tbody.addEventListener('change', (e) => {
+    const tr = e.target.closest('tr[data-fine-id]');
+    if (!tr) return;
+    const fineId = tr.dataset.fineId;
+    const type = tr.dataset.fineType;
 
-  const tfoot = document.createElement('tfoot');
-  const trTot = document.createElement('tr');
-  const tdLbl = document.createElement('td'); tdLbl.textContent = 'At betale:'; tdLbl.className = 'row-label';
-  const tdEmpty = document.createElement('td');
-  const tdTot = document.createElement('td');
-  const totalInput = document.createElement('input'); totalInput.type = 'text'; totalInput.readOnly = true; totalInput.className = 'amount-field total-field';
-  totalInput.value = '0'; totalInput.id = 'total-for-' + p.id;
-  tdTot.appendChild(totalInput);
-  trTot.append(tdLbl, tdEmpty, tdTot); tfoot.appendChild(trTot);
+    if (type === 'count' && e.target.matches('input.num')) {
+      const v = Math.max(0, parseInt(e.target.value || '0', 10));
+      e.target.value = v;
+      p.rows[fineId] = v;
+      savePlayers(players);
+      updateAmounts(table, p);
+      return;
+    }
+    if ((type === 'check' || type === 'derived-check') && e.target.matches('input[type="checkbox"]')) {
+      p.rows[fineId] = !!e.target.checked;
+      savePlayers(players);
+      updateAmounts(table, p);
+      return;
+    }
+  });
 
-  table.appendChild(tbody); table.appendChild(tfoot);
+  // 4) Første beregning
   updateAmounts(table, p);
   return table;
 }
@@ -2031,3 +2055,8 @@ function openGoogleViewerTotal(tabName) {
         </iframe>
     `;
 }
+
+
+
+// Hent spillerlisten i baggrunden ved app-start
+refreshSheetPlayersIfOnline(MIN_REFRESH_INTERVAL_MS).catch(() => {});
