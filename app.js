@@ -19,7 +19,7 @@ const ROUND_QUEUE_KEY = 'fgl.round.queue.v1';
 
 // Google Sheet-konfiguration (læsning)
 const SHEET_ID = '113sdXTQcfODil1asdol1DCWZPcMKHQb5QTA1lj8Qn5A';
-const SHEET_NAME = 'Spiller';
+const SHEET_NAME = 'Lister'; // 'Spiller' 'Lister'
 const SHEET_GID = '';
 
 // Offline-cache til spillerlisten
