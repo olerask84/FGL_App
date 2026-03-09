@@ -19,6 +19,7 @@ const ROUND_QUEUE_KEY = 'fgl.round.queue.v1';
 
 // Google Sheet-konfiguration (læsning)
 const SHEET_ID = '113sdXTQcfODil1asdol1DCWZPcMKHQb5QTA1lj8Qn5A';
+const SHEET_ID2 = '1f8Y3z7YaEQlemWVe61pIjy7kUkBKeYu71ys7887DnEQ';
 const SHEET_NAME = 'Lister'; // 'Spiller' 'Lister'
 const SHEET_GID = '';
 
@@ -193,7 +194,7 @@ function calcListHash(list){
 
 async function fetchSheetPlayersFromNetwork(){
   sheetLoadError = null;
-  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID2}/gviz/tq?tqx=out:json`;
   const where = SHEET_GID
     ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
     : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
@@ -380,7 +381,7 @@ function calcFinesHash(list){
 }
 
 async function fetchFinesFromNetwork(){
-  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID2}/gviz/tq?tqx=out:json`;
   const where = SHEET_GID
     ? `${base}&gid=${encodeURIComponent(SHEET_GID)}`
     : `${base}&sheet=${encodeURIComponent(SHEET_NAME)}`;
