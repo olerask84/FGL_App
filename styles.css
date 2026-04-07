@@ -332,3 +332,7 @@ body.empty-state #addPlayerBtn { position: fixed;
 .sheet-viewer-content iframe {
     -webkit-overflow-scrolling: touch;
 }
+
+input, textarea, select {
+    font-size: 16px !important;
+}
