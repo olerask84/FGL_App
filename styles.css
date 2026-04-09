@@ -313,7 +313,7 @@ body.empty-state #addPlayerBtn { position: fixed;
 }
 
 /* Små skærme: lad inputs være lidt bredere */
-@media (max-width:420px){
+@media (max-width:375px){
   .score-row .label{ width:5.5rem; }
   .score-row input[type="number"],
   .score-row input[type="text"]{ width:100%; max-width:7rem; }
