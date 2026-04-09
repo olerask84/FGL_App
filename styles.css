@@ -319,7 +319,8 @@ body.empty-state #addPlayerBtn { position: fixed;
   .score-row input[type="text"]{ width:100%; max-width:7rem; }
  
   .table td.amount { width: 4rem; min-width: 4rem; max-width: 4rem; }
-  .counter .num    { width: 3rem; }
+  .total-field     {width:5rem}
+  .counter .num    { width: 2.5rem; }
   .counter .iconbtn{ min-width: 1.9rem; padding: .3rem .4rem; }
 }
 
