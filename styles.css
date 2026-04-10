@@ -316,7 +316,7 @@ body.empty-state #addPlayerBtn { position: fixed;
 @media (max-width:420px){
   .score-row .label{ width:5.5rem; }
   .score-row input[type="number"],
-  .score-row input[type="text"]{ width:100%; max-width:7rem; }
+  .score-row input[type="text"]{ width:100%; max-width:5rem; }
  
   .table td.amount { width: 4rem; min-width: 4rem; max-width: 4rem; }
   .total-field     {width:5rem}
