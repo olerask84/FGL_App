@@ -845,8 +845,9 @@ function renderScoreCard(player) {
 
   // Label foran gennemsnit
   const avgHcpLabel = document.createElement('div');
-  avgHcpLabel.innerHTML = 'Gennemsnit hcp bold:&nbsp;&nbsp;';
+  avgHcpLabel.innerHTML = 'Gns. hcp bold:&nbsp;&nbsp;';
   avgHcpLabel.style.fontWeight = '700';
+  avgHcpLabel.style.fontSize = '0.85rem';
   avgHcpLabel.style.whiteSpace = 'nowrap';
   avgHcpLabel.style.marginLeft = "auto";
 
@@ -1153,7 +1154,7 @@ function renderScoreCard(player) {
 
       const avgLabel = document.createElement('span');
       avgLabel.className = 'name';
-      avgLabel.textContent = 'Gennemsnit netto bold';
+      avgLabel.textContent = 'Gns. netto bold';
 
       const avgValue = document.createElement('span');
       avgValue.className = 'avg-netto-val';
