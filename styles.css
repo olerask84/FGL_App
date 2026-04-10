@@ -321,7 +321,7 @@ body.empty-state #addPlayerBtn { position: fixed;
   .table td.amount { width: 4rem; min-width: 4rem; max-width: 4rem; }
   .total-field     {width:5rem}
   .counter .num    { width: 2.5rem; }
-  .counter .iconbtn{ min-width: 1.9rem; padding: .3rem .4rem; }
+  .counter .iconbtn{ min-width: 2.2rem; padding: .3rem .3rem; }
 }
 
 /* Lidt luft over/under scorekortet */
