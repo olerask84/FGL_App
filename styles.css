@@ -261,6 +261,17 @@ body.empty-state #addPlayerBtn { position: fixed;
 
 }
 
+.scorecard-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pinch-zoom;
+}
+
+
+.scorecard {
+  min-width: max-content;
+}
+
 .score-row.cs-hole-row { /* same grid via CSS vars */ }
 
 .score-row input[type="checkbox"] { justify-self: center; }
