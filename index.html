@@ -9,22 +9,20 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
     <link rel="apple-touch-icon" href="assets/icons/FGL_192.png" />
-
-    <!-- Din eksisterende styling -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="course-selector.css">
 </head>
-
 <body>
 <div id="app">
 
     <!-- TOPMENU -->
     <header class="topbar">
         <button id="menuBtn" class="btn primary icon-only" aria-label="Menu" title="Menu">☰</button>
-        <button id="addPlayerBtn" class="btn primary" aria-label="Tilføj spiller">Tilføj spiller</button>
+        <button id="addPlayerBtn" class="btn primary" aria-label="Start runde">Start runde</button>
         <button id="endRoundBtn" class="btn primary hidden end-round-btn" aria-label="Afslut runde">Afslut runde</button>
         <button id="resetBtn" class="btn danger hidden" aria-label="Nulstil app">Reset</button>
+        <span id="currentCourseLabel"></span>
     </header>
 
     <!-- SPILLERFANER -->
@@ -121,8 +119,66 @@
     </div>
 </div>
 
+<!-- ── Banevalg-overlay ────────────────────────────────────── -->
+<div id="courseSelectorOverlay" class="overlay hidden">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="csTitle">
+    <div class="menu-head">
+      <h3 id="csTitle">Vælg golfbane</h3>
+      <button id="courseSelectorClose" class="btn">Luk</button>
+    </div>
+
+    <!-- Trin 1: Søg på klubnavn -->
+    <div class="cs-search-wrap">
+      <label for="courseSearchInput">Søg på klubnavn</label>
+      <input id="courseSearchInput" type="search"
+        placeholder="Søg på klubnavn…"
+        autocomplete="off" inputmode="search">
+    </div>
+    <ul id="courseSearchResults" role="listbox" aria-label="Søgeresultater"></ul>
+
+    <!-- Trin 2: Vælg bane (kun hvis klubben har flere) -->
+    <div id="csBaneWrapper" class="hidden">
+      <label for="baneSelect">Vælg bane</label>
+      <select id="baneSelect">
+        <option value="">– Vælg bane –</option>
+      </select>
+    </div>
+
+    <!-- Trin 3: Vælg teested (kun hvis banen har flere) -->
+    <div id="teeSelectWrapper" class="hidden">
+      <label for="teeSelect">Vælg teested</label>
+      <select id="teeSelect">
+        <option value="">– Vælg teested –</option>
+      </select>
+    </div>
+
+    <!-- Bekræft -->
+    <div class="actions">
+      <button id="courseSelectorConfirm" class="btn primary" disabled>Bekræft bane</button>
+    </div>
+
+    <!-- Manuel indtastning -->
+    <div id="csManualWrapper" class="hidden">
+      <div class="cs-manual-divider">Klubben findes ikke i listen – indtast manuelt</div>
+      <div class="cs-manual-fields">
+        <div class="cs-manual-row">
+          <label for="csManualName">Klubnavn</label>
+          <input id="csManualName" type="text" placeholder="F.eks. Funder Bakker Golf">
+        </div>
+        <div class="cs-manual-row">
+          <label for="csManualPar">Par (total)</label>
+          <input id="csManualPar" type="number" value="72" min="60" max="80" style="width:5rem">
+        </div>
+      </div>
+      <div class="actions">
+        <button id="csManualConfirm" class="btn primary">Brug denne bane</button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- Din app -->
 <script src="app.js"></script>
+<script src="course-selector.js"></script>
 
 <script>
 if ('serviceWorker' in navigator) {

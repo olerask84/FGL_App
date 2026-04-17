@@ -1,0 +1,285 @@
+/* ============================================================
+   course-selector.css  –  Banevalg-overlay + slag/SI badges
+   ============================================================ */
+
+/* ── Overlay-dialog ───────────────────────────────────────── */
+#courseSelectorOverlay .dialog {
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+  width: 95%;
+}
+
+/* ── Søgefelt ─────────────────────────────────────────────── */
+.cs-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cs-search-wrap label {
+  font-size: .82rem;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+#courseSearchInput {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: .5rem;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+#courseSearchInput:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(10,61,98,.15);
+}
+
+/* ── Søgeresultatliste ────────────────────────────────────── */
+#courseSearchResults {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 190px;
+  overflow-y: auto;
+  border-radius: .5rem;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+#courseSearchResults:empty { display: none; }
+
+.cs-result {
+  padding: 9px 13px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.cs-result:last-child { border-bottom: none; }
+.cs-result:hover,
+.cs-result:focus    { background: #f0f5ff; outline: none; }
+.cs-result.cs-selected {
+  background: #e8f4e8;
+  border-left: 3px solid var(--brand);
+}
+.cs-result strong { font-size: .95rem; color: var(--ink); }
+.cs-city          { font-size: .8rem;  color: var(--muted); }
+.cs-loading,
+.cs-empty         { padding: 11px 13px; color: var(--muted); font-size: .9rem; text-align: center; }
+
+/* ── Tee-valg ─────────────────────────────────────────────── */
+#teeSelectWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+#teeSelectWrapper label {
+  font-size: .82rem;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+#teeSelect {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: .5rem;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  font-size: .95rem;
+  box-sizing: border-box;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%230a3d62'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+#teeSelect:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(10,61,98,.15);
+}
+
+/* ── Manuel bane-sektion ──────────────────────────────────── */
+.cs-manual-divider {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: .6rem 0 .4rem;
+  border-top: 1px solid var(--border);
+  margin-top: .5rem;
+}
+.cs-manual-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: .5rem;
+}
+.cs-manual-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cs-manual-row label {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 6rem;
+}
+.cs-manual-row input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+  font-size: 1rem;
+  background: #fff;
+  color: var(--ink);
+}
+.cs-manual-row input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(10,61,98,.15);
+}
+
+/* ── Scorekort: hul-rækker med badges ─────────────────────── */
+
+/* Par-badge og SI-badge – identisk størrelse */
+.cs-par-badge,
+.cs-si-badge {
+  display: block;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  width: 100%;
+  line-height: 1.4;
+}
+
+/* Slag-badge (I / II / III) – centreret under "Slag"-overskrift */
+.cs-stroke-badge {
+  display: block;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: .02em;
+  text-align: center;
+  width: 100%;
+  color: transparent;
+}
+.cs-stroke-badge.cs-has-stroke { color: #0a7a2a; }
+.cs-stroke-badge.cs-plus-hcp   { color: #b00020; }
+
+/* Checkbox – lidt padding til venstre, centreret under "Tættest pinnen" */
+.cs-pin-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding-left: .3rem;
+}
+
+/* ── Topbar: juster grid til ny knap + label ──────────────── */
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+}
+
+/* Sørg for at ⛳-knap ikke skubber alt ud af skærm */
+#openCourseSelectorBtn {
+  font-size: .85rem;
+  padding: .45rem .6rem;
+  white-space: nowrap;
+}
+
+/* Lille afrunding på bane-popup når der IKKE er valgt bane endnu */
+#courseSelectorOverlay.required-overlay .dialog {
+  border-top: 4px solid var(--brand);
+}
+
+/* ── Kolonneoverskrifter (Hul / Score / SI / HCP / Tættest pinnen) ── */
+.cs-col-header {
+  background: #f6f9ff;
+  border-bottom: 2px solid var(--border) !important;
+  margin-top: .25rem;
+}
+.cs-col-lbl {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  line-height: 1.2;
+  text-align: center;
+}
+.cs-col-lbl.label,
+.cs-col-lbl.cs-col-lbl:first-child {
+  text-align: left;
+}
+.cs-col-score,
+.cs-col-par,
+.cs-col-si,
+.cs-col-hcp,
+.cs-col-pin { text-align: center; }
+
+/* ── Bane-valg dropdown (trin 2) ─────────────────────────── */
+#csBaneWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+#csBaneWrapper label {
+  font-size: .82rem;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+#baneSelect {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: .5rem;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  font-size: .95rem;
+  box-sizing: border-box;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%230a3d62'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+#baneSelect:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(10,61,98,.15);
+}
+
+/* ── Responsiv ──────────────────────────────────────────── */
+@media (max-width: 420px) {
+  /*.cs-si-badge     { font-size: .6rem; }*/
+  
+  /* HCP / SI-tal må IKKE blive mindre på mobil */
+  .cs-si-badge {
+    font-size: .85rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .cs-stroke-badge { font-size: .66rem; }
+  #currentCourseLabel { max-width: 110px; font-size: .67rem; }
+}

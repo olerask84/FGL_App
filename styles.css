@@ -5,7 +5,20 @@ html,body{height:100%}
 body{margin:0;font:16px/1.4 system-ui,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
 body::before{content:"";position:fixed;inset:0;background-image:url('assets/icons/FGL_192_VM.png');background-repeat:repeat;background-size:128px 128px;opacity:.08;pointer-events:none;z-index:0}
 #app{position:relative;z-index:1}
-.topbar{display:grid;grid-template-columns:auto auto auto;gap:.5rem;padding:.75rem;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.6rem .75rem;padding-right:3rem;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
+#currentCourseLabel{
+  flex: 1 1 100%;
+  font-size:.8rem;
+  font-weight:700;
+  color:var(--brand);
+  white-space: nowrap;
+  overflow: visible;
+  /*word-break: normal;
+  overflow-wrap: break-word;*/
+  text-overflow: clip;
+  line-height: 1.2;
+  padding-right: 3rem; /* plads til menu-knap der er position:absolute */
+}
 .btn{appearance:none;-webkit-appearance:none;border:1px solid var(--border);background:#fff;color:var(--ink);padding:.55rem .9rem;border-radius:.5rem;cursor:pointer;font-weight:600}
 .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
 .btn.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
@@ -59,8 +72,7 @@ body.empty-state #addPlayerBtn { position: fixed;
 .toast.show { opacity: .98;
  }
 /* --- Hamburger/menuknap --- */
-#menuBtn { position: absolute; top: .75rem; right: .75rem; line-height: 1; padding: .45rem .6rem; font-size: 1.1rem;
- z-index: 4; }
+#menuBtn { position: absolute; top: .6rem; right: .75rem; line-height: 1; padding: .45rem .6rem; font-size: 1.1rem; z-index: 4; }
 .btn.icon-only { width: 2.2rem; text-align: center; }
 /* --- Menuoverlay --- */
 .menu-head { display: flex; align-items: center; justify-content: space-between;
@@ -216,34 +228,82 @@ body.empty-state #addPlayerBtn { position: fixed;
 }
 
 
-.score-row{
-  display:grid;
-  grid-template-columns: 6.5rem 6rem 1fr 2.2rem; /* label | score | spacer | checkbox */
-  align-items:center;
-  padding:.35rem .2rem;
-  border-bottom:1px solid var(--border);
+
+/* ── Scorecard layout ────────────────────────────────────────
+   Alle rækker deler ét grid: LABEL | SCORE | PAR | HCP | SLAG | PIN
+   Kolonnebredder er faste så alt flugter lodret.
+   På 375px bredt panel (~340px inde i padding) passer det.
+   ─────────────────────────────────────────────────────────── */
+.scorecard {
+  display: block;
+  --sc-lbl:   5.5rem;
+  --sc-inp:   3.8rem;
+  --sc-par:   2rem;
+  --sc-hcp:   2rem;
+  --sc-slag:  2.6rem;
+  --sc-pin:   2.2rem;
 }
 
-.score-row input[type="checkbox"]{ justify-self:center; }
+/* Alle score-rækker bruger samme 6-kolonne grid */
+.score-row {
+  display: grid;
+  grid-template-columns:
+    var(--sc-lbl)
+    var(--sc-inp)
+    var(--sc-par)
+    var(--sc-hcp)
+    var(--sc-slag)
+    var(--sc-pin);
+  align-items: center;
+  gap: 0 3px;
+  padding: .3rem .2rem;
+  border-bottom: 1px solid var(--border);
 
-.score-row:last-child{ border-bottom:none; }
-.score-row .label{
-  width:6.5rem;
-  font-weight:700;
-  color:var(--ink);
-  flex:0 0 auto;
 }
+
+.score-row.cs-hole-row { /* same grid via CSS vars */ }
+
+.score-row input[type="checkbox"] { justify-self: center; }
+.score-row:last-child { border-bottom: none; }
+
+.score-row .label {
+  font-weight: 700;
+  color: var(--ink);
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+  font-size: .85rem;
+  line-height: 1.2;
+  align-self: center;
+}
+
 .score-row input[type="number"],
-.score-row input[type="text"]{
-  width:6rem;
-  padding:.45rem .5rem;
-  border:1px solid var(--border);
-  border-radius:.5rem;
-  background:#fff;
-  color:var(--ink);
+.score-row input[type="text"] {
+  width: 100%;
+  padding: .38rem .3rem;
+  border: 1px solid var(--border);
+  border-radius: .4rem;
+  background: #fff;
+  color: var(--ink);
+  box-sizing: border-box;
+  font-size: .9rem;
 }
-.score-row input[readonly]{
-  background:#f8fafc;
+.score-row input[readonly] { background: #f8fafc; }
+
+/* Summary-input (Brutto/Slag/Netto) – kolonne 2 */
+.score-summary-input {
+  grid-column: 2 / 3;
+  width: 100%;
+}
+
+/* Summary-rækker: label fylder kolonne 1, input i kolonne 2 */
+.score-row:not(.cs-hole-row):not(.cs-col-header) .label {
+  font-size: .82rem;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 
 /* Sektionstitler i scorekort (valgfrit) */
@@ -312,16 +372,17 @@ body.empty-state #addPlayerBtn { position: fixed;
     border-bottom: 1px solid var(--border); /* Standard linje */
 }
 
-/* Små skærme: lad inputs være lidt bredere */
+/* Små skærme: juster bøde-tabel (scorecard håndteres via CSS-variabler i course-selector.css) */
 @media (max-width:420px){
-  .score-row .label{ width:5.5rem; }
-  .score-row input[type="number"],
-  .score-row input[type="text"]{ width:100%; max-width:5rem; }
- 
   .table td.amount { width: 4rem; min-width: 4rem; max-width: 4rem; }
-  .total-field     {width:5rem}
+  .total-field     { width:5rem }
   .counter .num    { width: 2.5rem; }
   .counter .iconbtn{ min-width: 2.2rem; padding: .3rem .3rem; }
+  
+  #currentCourseLabel {
+      font-size: 0.7rem;
+    }
+
 }
 
 /* Lidt luft over/under scorekortet */
