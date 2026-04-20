@@ -1853,7 +1853,7 @@ function triggerSheetRecalcFromPWA() {
 if (menuBtn) {
   menuBtn.addEventListener("click", () => {
     // 1️⃣ Trigger Sheets-opdatering i baggrunden
-    triggerSheetRecalcFromPWA();
+    //triggerSheetRecalcFromPWA();
 
     // 2️⃣ Åbn menuen som normalt
     openMenu();
