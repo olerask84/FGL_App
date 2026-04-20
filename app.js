@@ -11,7 +11,7 @@ const BEST_BOLD_KEY = 'fgl.bestbold.v1';
 let bestBoldEnabled = (localStorage.getItem(BEST_BOLD_KEY) === '1');
 
 // === Afslut runde backend-konfiguration ===
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfHHflk-ADbCxpxBLVpI6Zq640sug6xt21iL-we8mGKnQKF2LrKXOoFqy63eG9ZgE-Bw/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypreMllPBALYFucYkiGdGnEgvErllKnxt748m2fdDjtNkuV9Udy35oJHfbeEwiaeSMFw/exec';
 const SECRET_KEY = 'O^AaXzP8aa%g8jGt@d_z_GK%y$ko$$k^#e8tq*qVzWT!OIh#14';
 const AUTO_RESET_AFTER_SEND = true;
 const ENABLE_OFFLINE_QUEUE = true;
