@@ -1833,8 +1833,32 @@ function closeLotteryResult() {
     document.body.classList.remove('modal-open');
 }
 
+function triggerSheetRecalcFromPWA() {
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify({
+      secret: SECRET_KEY,
+      action: "update"
+    })
+  }).catch(() => {
+    // fire-and-forget
+  });
+}
+
 // ---------------- Events ----------------
-if (menuBtn) menuBtn.addEventListener('click', openMenu);
+//if (menuBtn) menuBtn.addEventListener('click', openMenu);
+if (menuBtn) {
+  menuBtn.addEventListener("click", () => {
+    // 1️⃣ Trigger Sheets-opdatering i baggrunden
+    triggerSheetRecalcFromPWA();
+
+    // 2️⃣ Åbn menuen som normalt
+    openMenu();
+  });
+}
 if (menuClose) menuClose.addEventListener('click', closeMenu);
 if (menuOverlay) menuOverlay.addEventListener('click', (e) => {
   if (e.target === menuOverlay) closeMenu();
