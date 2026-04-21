@@ -2004,7 +2004,7 @@ if ('serviceWorker' in navigator) {
 
 function openGoogleViewerScore(tabName) {
     // Hvis du har GID for Scores fanen, sæt den ind her:
-    const gid = "197525474"; // ← SKIFT til rigtig GID for Scores fanen
+    const gid = "782613682"; // ← SKIFT til rigtig GID for Scores fanen old: 197525474
 
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}`;
 
