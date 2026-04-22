@@ -1833,7 +1833,29 @@ function closeLotteryResult() {
     document.body.classList.remove('modal-open');
 }
 
-function triggerSheetRecalcFromPWA() {
+async function triggerSheetRecalcFromPWA() {
+  const res = await fetch(SCRIPT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8" // korrekt til GAS
+    },
+    body: JSON.stringify({
+      secret: SECRET_KEY,
+      action: "update"
+    })
+  });
+
+  const data = await res.json();
+
+  // Fejl fra Apps Script
+  if (data.status === "error") {
+    throw new Error(data.message || "Serverfejl");
+  }
+
+  return data;
+}
+
+/*function triggerSheetRecalcFromPWA() {
   fetch(SCRIPT_URL, {
     method: "POST",
     headers: {
@@ -1846,7 +1868,7 @@ function triggerSheetRecalcFromPWA() {
   }).catch(() => {
     // fire-and-forget
   });
-}
+}*/
 
 // ---------------- Events ----------------
 //if (menuBtn) menuBtn.addEventListener('click', openMenu);
