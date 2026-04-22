@@ -77,6 +77,7 @@ const menuBtn = document.getElementById('menuBtn');
 const menuOverlay = document.getElementById('menuOverlay');
 const menuList = document.getElementById('menuList');
 const menuClose = document.getElementById('menuClose');
+const menuUpdateAll = document.getElementById('menuUpdateAll');
 const sheetViewer = document.getElementById('sheetViewer');
 const sheetViewerTitle = document.getElementById('sheetViewerTitle');
 const sheetViewerContent = document.getElementById('sheetViewerContent');
@@ -1855,20 +1856,22 @@ async function triggerSheetRecalcFromPWA() {
   return data;
 }
 
-/*function triggerSheetRecalcFromPWA() {
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify({
-      secret: SECRET_KEY,
-      action: "update"
-    })
-  }).catch(() => {
-    // fire-and-forget
-  });
-}*/
+async function updateSheet() {
+  showToast("Opdaterer ALT…");
+  try {
+        const res = await triggerSheetRecalcFromPWA();
+
+        if (res.status === "ok") {
+          showToast("Opdatering færdig!");
+        } else {
+          showToast("Fejl: " + res.message);
+        }
+
+      } catch (err) {
+        console.error(err);
+        showToast("Forbindelsesfejl");
+      }
+}
 
 // ---------------- Events ----------------
 //if (menuBtn) menuBtn.addEventListener('click', openMenu);
@@ -1882,6 +1885,14 @@ if (menuBtn) {
   });
 }
 if (menuClose) menuClose.addEventListener('click', closeMenu);
+
+if (menuUpdateAll) {
+  menuUpdateAll.addEventListener("click", async () => {
+    //closeMenu();          // valgfrit – luk menuen først
+    await updateSheet();  // kør din funktion
+  });
+}
+
 if (menuOverlay) menuOverlay.addEventListener('click', (e) => {
   if (e.target === menuOverlay) closeMenu();
 });
