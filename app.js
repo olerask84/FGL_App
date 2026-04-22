@@ -1927,7 +1927,7 @@ function showToast(msg) {
   if (!t) { t = document.createElement('div'); t.id = 'fgl-toast'; t.className = 'toast'; document.body.appendChild(t); }
   t.textContent = msg; t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
 // ---------------- Init ----------------
