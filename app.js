@@ -326,6 +326,7 @@ function openSheetViewer(tabName) {
 }
 function closeSheetViewer() {
   sheetViewer.classList.add('hidden');
+  sheetViewerContent.classList.remove('has-iframe');
   sheetViewerContent.innerHTML = '';
 }
 
@@ -2036,48 +2037,54 @@ if ('serviceWorker' in navigator) {
 }*/
 
 function openGoogleViewerScore(tabName) {
-    // Hvis du har GID for Scores fanen, sæt den ind her:
-    const gid = "782613682"; // ← SKIFT til rigtig GID for Scores fanen old: 197525474
-
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}`;
+    const gid = "782613682";
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}&rm=minimal`;
 
     sheetViewerTitle.textContent = tabName;
     sheetViewer.classList.remove("hidden");
+    sheetViewerContent.classList.add("has-iframe");
 
     sheetViewerContent.innerHTML = `
-        <iframe 
-            src="${url}" 
-            style="
-                width:100%;
-                height: calc(100vh - 60px);
-                border:0;
-                overflow:auto;
-                background:white;
-            ">
-        </iframe>
+        <div style="position:relative; width:100%; height:100%; overflow:hidden;">
+            <iframe 
+                src="${url}" 
+                style="
+                    position:absolute;
+                    top:-40px;
+                    left:0;
+                    width:100%;
+                    height:calc(100% + 90px);
+                    border:0;
+                    background:white;
+                ">
+            </iframe>
+        </div>
     `;
 }
 
 function openGoogleViewerTotal(tabName) {
-    // Hvis du har GID for Scores fanen, sæt den ind her:
-    const gid = "408277632"; // ← SKIFT til rigtig GID for Scores fanen
-
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}`;
+    const gid = "408277632";
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}&rm=minimal`;
 
     sheetViewerTitle.textContent = tabName;
     sheetViewer.classList.remove("hidden");
+    sheetViewerContent.classList.add("has-iframe");
 
     sheetViewerContent.innerHTML = `
-        <iframe 
-            src="${url}" 
-            style="
-                width:100%;
-                height: calc(100vh - 60px);
-                border:0;
-                overflow:auto;
-                background:white;
-            ">
-        </iframe>
+        <div style="position:relative; width:100%; height:100%; overflow:hidden;">
+            <iframe 
+                src="${url}" 
+                style="
+                    position:absolute;
+                    top:-40px;
+                    left:0;
+                    width:100%;
+                    height:calc(100% + 90px);
+                    border:0;
+                    background:white;
+                ">
+            </iframe>
+        </div>
     `;
 }
 
