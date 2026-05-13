@@ -1897,6 +1897,185 @@ if (menuBtn) {
 }
 if (menuClose) menuClose.addEventListener('click', closeMenu);
 
+const menuIndbetal = document.getElementById('menuIndbetal');
+if (menuIndbetal) {
+  menuIndbetal.addEventListener('click', () => {
+    closeMenu();
+    openIndbetalOverlay();
+  });
+}
+
+// ── Indbetal: cache (gviz, ingen Apps Script) ─────────────────
+const STILLING_BOEDER_CACHE_KEY      = 'fgl.stillingboeder.v1';
+const STILLING_BOEDER_CACHE_META_KEY = 'fgl.stillingboeder.meta.v1';
+const STILLING_BOEDER_MAX_AGE_MS     = 60 * 60 * 1000; // 1 time
+
+function loadStillingBoederCache() {
+  try {
+    const list = JSON.parse(localStorage.getItem(STILLING_BOEDER_CACHE_KEY) ?? '[]');
+    const meta = JSON.parse(localStorage.getItem(STILLING_BOEDER_CACHE_META_KEY) ?? '{}');
+    return { list, meta };
+  } catch { return { list: [], meta: {} }; }
+}
+
+function saveStillingBoederCache(list, meta = {}) {
+  localStorage.setItem(STILLING_BOEDER_CACHE_KEY, JSON.stringify(list));
+  localStorage.setItem(STILLING_BOEDER_CACHE_META_KEY, JSON.stringify(meta));
+}
+
+function calcStillingBoederHash(list) {
+  return hashString(JSON.stringify(list.map(r => r.navn + '|' + r.belob)));
+}
+
+async function fetchStillingBoederFromNetwork() {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`
+            + `&sheet=${encodeURIComponent('Stilling-Bøder')}&range=A:C&headers=0`;
+  const resp = await fetch(url, { cache: 'no-cache' });
+  if (!resp.ok) throw new Error(`Stilling-Bøder: hentning fejlede (${resp.status})`);
+  const json = parseGViz(await resp.text());
+  if (!json.table) throw new Error('Stilling-Bøder: ugyldigt gviz-svar');
+
+  const rows = [];
+  for (const r of (json.table.rows ?? [])) {
+    const c    = r.c ?? [];
+    const navn = (c[0]?.v ?? '').toString().trim();
+    const belob = Number(c[2]?.v ?? 0);
+    if (!navn || belob === 0) continue;
+    rows.push({ navn, belob });
+  }
+  return rows;
+}
+
+async function refreshStillingBoederIfOnline(minAgeMs = 0) {
+  const { meta } = loadStillingBoederCache();
+  if (minAgeMs && meta?.updatedAt && (Date.now() - meta.updatedAt) < minAgeMs)
+    return { changed: false, reason: 'fresh-enough' };
+  if (!navigator.onLine) return { changed: false, reason: 'offline' };
+  try {
+    const fresh   = await fetchStillingBoederFromNetwork();
+    const newHash = calcStillingBoederHash(fresh);
+    if (newHash !== meta?.hash) {
+      saveStillingBoederCache(fresh, { hash: newHash, updatedAt: Date.now() });
+      return { changed: true, list: fresh };
+    }
+    // Samme data – opdatér kun timestamp så uret nulstilles
+    saveStillingBoederCache(loadStillingBoederCache().list, { hash: newHash, updatedAt: Date.now() });
+    return { changed: false, reason: 'no-change' };
+  } catch (err) {
+    console.error('Stilling-Bøder refresh fejl:', err);
+    return { changed: false, reason: 'error', error: err };
+  }
+}
+
+// Hent i baggrunden ved app-start
+refreshStillingBoederIfOnline(STILLING_BOEDER_MAX_AGE_MS).catch(() => {});
+
+// ── Indbetal-overlay ──────────────────────────────────────────
+const indbetalOverlay  = document.getElementById('indbetalOverlay');
+const indbetalList     = document.getElementById('indbetalList');
+const indbetalStatus   = document.getElementById('indbetalStatus');
+const indbetalConfirm  = document.getElementById('indbetalConfirm');
+const indbetalCancel   = document.getElementById('indbetalCancel');
+let   indbetalSelected = null; // { navn, belob }
+
+function renderIndbetalList(rows) {
+  indbetalList.innerHTML = '';
+  const filtered = rows.filter(r => r.navn && r.belob !== 0);
+  if (!filtered.length) {
+    indbetalStatus.textContent = 'Ingen udestående beløb.';
+    return;
+  }
+  indbetalStatus.textContent = 'Vælg en spiller:';
+  const frag = document.createDocumentFragment();
+  filtered.forEach(row => {
+    const li = document.createElement('li');
+    li.className = 'indbetal-item';
+    li.innerHTML = `<span class="navn">${escapeHtml(row.navn)}</span>`
+                 + `<span class="belob">${row.belob} kr.</span>`;
+    li.addEventListener('click', () => {
+      indbetalList.querySelectorAll('.indbetal-item').forEach(el => el.classList.remove('selected'));
+      li.classList.add('selected');
+      indbetalSelected = row;
+      indbetalConfirm.disabled = false;
+    });
+    frag.appendChild(li);
+  });
+  indbetalList.appendChild(frag);
+}
+
+function openIndbetalOverlay() {
+  indbetalSelected = null;
+  indbetalConfirm.disabled = true;
+  document.body.classList.add('modal-open');
+  indbetalOverlay.classList.remove('hidden');
+
+  // 1. Vis cached data med det samme (nul ventetid)
+  const { list: cached, meta } = loadStillingBoederCache();
+  if (cached.length) {
+    renderIndbetalList(cached);
+    const ageMin = meta?.updatedAt ? Math.round((Date.now() - meta.updatedAt) / 60000) : null;
+    indbetalStatus.textContent = `Vælg en spiller: ${ageMin !== null ? `(opdateret for ${ageMin} min. siden)` : ''}`;
+  } else {
+    indbetalStatus.textContent = 'Henter data…';
+  }
+
+  // 2. Opdatér i baggrunden; vis ny liste hvis data er ændret
+  refreshStillingBoederIfOnline(0).then(({ changed, list, reason, error }) => {
+    if (changed && list) {
+      renderIndbetalList(list);
+    } else if (!cached.length) {
+      if (error) {
+        indbetalStatus.textContent = 'Kunne ikke hente data' + (navigator.onLine ? ': ' + error.message : ' (offline)');
+      } else {
+        indbetalStatus.textContent = 'Ingen udestående beløb.';
+      }
+    }
+  }).catch(err => {
+    if (!cached.length) indbetalStatus.textContent = 'Fejl: ' + err.message;
+  });
+}
+
+function closeIndbetalOverlay() {
+  indbetalOverlay.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+  indbetalSelected = null;
+}
+
+if (indbetalCancel)  indbetalCancel.addEventListener('click', closeIndbetalOverlay);
+if (indbetalOverlay) indbetalOverlay.addEventListener('click', (e) => {
+  if (e.target === indbetalOverlay) closeIndbetalOverlay();
+});
+
+if (indbetalConfirm) {
+  indbetalConfirm.addEventListener('click', async () => {
+    if (!indbetalSelected) return;
+    indbetalConfirm.disabled = true;
+    indbetalStatus.textContent = 'Sender…';
+    try {
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          secret: SECRET_KEY,
+          action: 'indbetal',
+          navn:   indbetalSelected.navn,
+          belob:  indbetalSelected.belob,
+          dato:   new Date().toISOString()
+        })
+      });
+      const data = await res.json();
+      if (data.status !== 'ok') throw new Error(data.message || 'Serverfejl');
+      // Ugyldiggør cache så næste åbning henter friske tal
+      saveStillingBoederCache([], {});
+      showToast(`Indbetaling registreret for ${indbetalSelected.navn}`);
+      closeIndbetalOverlay();
+    } catch (err) {
+      indbetalStatus.textContent = 'Fejl: ' + err.message;
+      indbetalConfirm.disabled = false;
+    }
+  });
+}
+
 if (menuUpdateAll) {
   menuUpdateAll.addEventListener("click", async () => {
     //closeMenu();          // valgfrit – luk menuen først

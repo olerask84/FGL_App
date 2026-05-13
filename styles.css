@@ -75,8 +75,10 @@ body.empty-state #addPlayerBtn { position: fixed;
 #menuBtn { position: absolute; top: .6rem; right: .75rem; line-height: 1; padding: .45rem .6rem; font-size: 1.1rem; z-index: 4; }
 .btn.icon-only { width: 2.2rem; text-align: center; }
 /* --- Menuoverlay --- */
-.menu-head { display: flex; align-items: center; justify-content: space-between;
- gap: .5rem; }
+.menu-head { display: flex; flex-direction: column; align-items: flex-start; gap: .4rem; }
+.menu-head h3 { margin: 0; }
+.menu-actions { display: flex; gap: .5rem; width: 100%; }
+.menu-actions .btn { flex: 1; text-align: center; }
 .menu-list { margin-top: .5rem; max-height: 50vh; overflow: auto; border: 1px solid var(--border); border-radius: .5rem; background: #fff;
  }
 .menu-item { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.55rem .7rem; border-bottom:1px solid var(--border); cursor:pointer; }
@@ -406,9 +408,42 @@ body.empty-state #addPlayerBtn { position: fixed;
 .mt-2{ margin-top:.5rem; }
 .mb-2{ margin-bottom:.5rem; }
 
-.sheet-viewer-content iframe {
-    -webkit-overflow-scrolling: touch;
+/* ── Indbetal-overlay ─────────────────────────────────────── */
+.indbetal-status {
+  font-size: .85rem;
+  color: var(--muted);
+  margin: .25rem 0 .5rem;
+  min-height: 1.2em;
 }
+.indbetal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 .5rem;
+  max-height: 55vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+  background: #fff;
+}
+.indbetal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  gap: .5rem;
+}
+.indbetal-item:last-child { border-bottom: none; }
+.indbetal-item:hover { background: #f6f9ff; }
+.indbetal-item.selected { background: #aef5c3; }
+.indbetal-item .navn { font-weight: 700; }
+.indbetal-item .belob {
+  font-weight: 700;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
 
 input, textarea, select {
     font-size: 16px !important;

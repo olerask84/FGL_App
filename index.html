@@ -82,16 +82,11 @@
     <div class="dialog">
         
         <div class="menu-head">
-        <h3>Menu</h3>
-
+            <h3>Menu</h3>
             <div class="menu-actions">
-                <button id="menuUpdateAll" class="btn primary">
-                Opdater ALT
-                </button>
-
-                <button id="menuClose" class="btn primary">
-                Luk
-                </button>
+                <button id="menuIndbetal" class="btn primary">Indbetal</button>
+                <button id="menuUpdateAll" class="btn primary">Opdater ALT</button>
+                <button id="menuClose" class="btn primary">Luk</button>
             </div>
         </div>
 
@@ -187,6 +182,19 @@
     </div>
   </div>
 </div>
+<!-- ── Indbetal-overlay ───────────────────────────────────── -->
+<div id="indbetalOverlay" class="overlay hidden">
+  <div class="dialog" role="dialog" aria-modal="true">
+    <h3>Indbetal</h3>
+    <p id="indbetalStatus" class="indbetal-status"></p>
+    <ul id="indbetalList" class="indbetal-list"></ul>
+    <div class="actions">
+      <button id="indbetalConfirm" class="btn primary" disabled>Indbetalt</button>
+      <button id="indbetalCancel" class="btn">Annullér</button>
+    </div>
+  </div>
+</div>
+
 <!-- Din app -->
 <script src="app.js"></script>
 <script src="course-selector.js"></script>
