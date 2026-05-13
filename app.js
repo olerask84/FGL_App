@@ -1611,15 +1611,15 @@ function closeMenu() {
 function renderMenuList() {
     menuList.innerHTML = "";
 
-    /* --- NY: STLLING --- */
-    const standingItem = document.createElement("div");
-    standingItem.className = "menu-item";
-    standingItem.innerHTML = `<div class="name">Stilling</div>`;
-    standingItem.addEventListener("click", () => {
+        /* --- NY: STLLING --- */
+    const standingFineItem = document.createElement("div");
+    standingFineItem .className = "menu-item";
+    standingFineItem .innerHTML = `<div class="name">Stilling-Bøder</div>`;
+    standingFineItem .addEventListener("click", () => {
         closeMenu();
-        openGoogleViewerScore("Scores"); // <-- viser Scores-arket som ønsket
+        openSheetViewer("Stilling-Bøder"); // <-- viser Scores-arket som ønsket
     });
-    menuList.appendChild(standingItem);
+    menuList.appendChild(standingFineItem );
 
     /* --- BØDE KORT OVERSKRIFT --- */
     const fineHeader = document.createElement("div");
@@ -1667,6 +1667,16 @@ function renderMenuList() {
         fineList.style.display = isOpen ? "block" : "none";
         fineHeader.textContent = isOpen ? "Bøde Kort ▼" : "Bøde Kort ▸";
     });
+
+        /* --- NY: STLLING --- */
+    const standingItem = document.createElement("div");
+    standingItem.className = "menu-item";
+    standingItem.innerHTML = `<div class="name">Udregning af Stilling</div>`;
+    standingItem.addEventListener("click", () => {
+        closeMenu();
+        openGoogleViewerScore("Scores"); // <-- viser Scores-arket som ønsket
+    });
+    menuList.appendChild(standingItem);
 
     /* --- LODTRÆKNING --- */
     /*const lotteryHeader = document.createElement("div");
@@ -2063,7 +2073,8 @@ function openGoogleViewerScore(tabName) {
 }
 
 function openGoogleViewerTotal(tabName) {
-    const gid = "408277632";
+    //const gid = "408277632";
+    const gid = "1832100989";
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview?gid=${gid}&rm=minimal`;
 
     sheetViewerTitle.textContent = tabName;
