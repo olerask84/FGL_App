@@ -1443,9 +1443,34 @@ function fullResetLikeButton(){
     document.querySelectorAll('input.bestbold-toggle').forEach(cb => cb.checked = false);
 }
 
+// Validering: kontroller at alle spillere har HCP udfyldt
+function validatePlayerHcp() {
+  const missingHcp = [];
+  
+  for (const p of players) {
+    const hcpValue = p.score?.hcp;
+    
+    // Tjek hvis feltet er tomt (""), undefined, null, eller lig med 0
+    const isEmpty = hcpValue === '' || hcpValue === undefined || hcpValue === null;
+    const isZero = Number(hcpValue) === 0;
+    
+    if (isEmpty || isZero) {
+      missingHcp.push(p.name);
+    }
+  }
+  
+  if (missingHcp.length > 0) {
+    const playerList = missingHcp.join(', ');
+    alert(`⚠️ Manglende HCP på følgende spillere:\n\n${playerList}\n\nPrøv igen når alle HCP værdier er udfyldt.`);
+    return false;
+  }
+  
+  return true;
+}
 
 async function finishRoundFlow(courseName){
   if (!players.length) return;
+  if (!validatePlayerHcp()) return;
   
   // Recalc inden vi bygger payload, så avgHcpGlobal/avgNettoGlobal er friske
   calculateAvgNetto();
