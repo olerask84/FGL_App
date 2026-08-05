@@ -108,7 +108,8 @@ async function csGetSheetData() {
 // ── HCP-beregning ────────────────────────────────────────────
 
 function calcPlayingHandicap(hcpIndex, slope, courseRating, par) {
-  return Math.round(Number(hcpIndex) * (slope / 113) + (courseRating - par));
+  return Math.round((Number(hcpIndex) * (Number(slope) / 113)) + (Number(courseRating) - Number(par)));
+  //return Math.round(Number(hcpIndex) * (slope / 113) + (courseRating - par));
 }
 
 function calcStrokesPerHole(playingHandicap, holes) {
