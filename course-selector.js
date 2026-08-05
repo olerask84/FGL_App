@@ -108,9 +108,24 @@ async function csGetSheetData() {
 // ── HCP-beregning ────────────────────────────────────────────
 
 function calcPlayingHandicap(hcpIndex, slope, courseRating, par) {
+  // 1. Håndter både komma og punktum som decimal-separator
+  const cleanHcp = typeof hcpIndex === 'string' ? hcpIndex.replace(',', '.') : hcpIndex;
+  const cleanCR  = typeof courseRating === 'string' ? courseRating.replace(',', '.') : courseRating;
+
+  const hcp = Number(cleanHcp);
+  const sl = Number(slope);
+  const cr = Number(cleanCR);
+  const p = Number(par);
+
+  // Math.round på det samlede resultat
+  return Math.round((hcp * (sl / 113)) + (cr - p));
+}
+
+
+/*function calcPlayingHandicap(hcpIndex, slope, courseRating, par) {
   return Math.round((Number(hcpIndex) * (Number(slope) / 113)) + (Number(courseRating) - Number(par)));
   //return Math.round(Number(hcpIndex) * (slope / 113) + (courseRating - par));
-}
+}*/
 
 function calcStrokesPerHole(playingHandicap, holes) {
   return holes.map(h => {
